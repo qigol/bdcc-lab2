@@ -1,0 +1,3 @@
+VERDICT: PASS
+
+1. No required changes. `scripts/setup_env.sh:23` and `scripts/setup_env.sh:169`-`scripts/setup_env.sh:219` create the configured raw-dump links after the data directories, preserve correct links, replace wrong or broken symlinks, skip unavailable sources, honor dry-run mode, and retain the post-link non-empty-file count. `README.md:24` and `README.md:40` contain the requested documentation changes. `bash -n scripts/setup_env.sh`, `scripts/setup_env.sh --dry-run`, and `scripts/setup_env.sh --check` all exited 0; the dry run reported all 8 existing links. The wiped-directory test created and resolved all 8 links under `/tmp/tmp.y7Q2sYfYyH`, which was left in place as required.

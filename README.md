@@ -21,7 +21,7 @@ Four research questions:
 | `scripts/kiro_run.sh` | Runs one Kiro agent on one orchestration task. |
 | `.orchestration/` | Task specs, reviews and run logs for the Claude + Kiro workflow. |
 | `.kiro/` | Agent configs and project rules (`.kiro/steering/project.md`). |
-| `discogs_loader.py` | Root-level helper that loads the dumps as Spark DataFrames via Parquet. |
+| `discogs_loader.py` | Older standalone loader, superseded by `lab2/vinyl/`. Uses a different snapshot date (20261101). Do not use; to be removed. |
 | `requirements.txt` | Python dependencies. |
 
 ## Setup
@@ -37,7 +37,7 @@ The script:
 1. Creates `.venv/` with `/opt/conda/bin/python3 -m venv --system-site-packages`, so the conda packages (pandas, numpy, scikit-learn, jupyterlab and others) are reused.
 2. Installs `requirements.txt` without the `pyspark` line, and without `--upgrade`, so conda packages stay as they are. It adds `python-igraph`, `leidenalg`, `node2vec` and `umap-learn`.
 3. Registers a Jupyter kernel named `vinyl` (display name "Python (vinyl)"). Its `kernel.json` sets `DISCOGS_DATA_DIR`, `SPARK_HOME` and `PYTHONPATH`, so notebooks find Spark and the data.
-4. Creates `/tmp/$USER/discogs/{raw,parquet}` and warns if `raw/` has fewer than 8 non-empty `.xml.gz` files.
+4. Creates `/tmp/$USER/discogs/{raw,parquet}`, then symlinks the shared dumps from `/mnt/data/public/discogs/<year>/` into `raw/` (existing correct links are kept, wrong ones are replaced, missing or 0-byte sources are skipped with a warning). It warns if `raw/` has fewer than 8 non-empty `.xml.gz` files.
 
 Then, in each shell:
 
