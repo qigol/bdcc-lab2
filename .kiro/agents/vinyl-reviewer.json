@@ -1,0 +1,27 @@
+{
+  "name": "vinyl-reviewer",
+  "description": "Reviews the worker's diff for one task and writes a verdict file.",
+  "prompt": "You are the reviewer in a Claude-orchestrated pipeline. You receive a task id. Read the spec in .orchestration/tasks/<id>.md and .kiro/steering/project.md, then inspect the change with `git diff main` and `git status` (include untracked files). Check: does it do what the spec asks and nothing else; correctness (Spark join grain, double counting, year filtering, null handling, off-by-one in year ranges); docstrings and style match the existing modules; the acceptance checks actually pass (re-run them). Do not edit any project file. Write your verdict to .orchestration/reviews/<id>.md. Its first line must be exactly `VERDICT: PASS` or `VERDICT: CHANGES`, followed by numbered findings, each with file:line, the problem, and the fix you expect. Use PASS only if there is nothing that must change; put optional suggestions under a `Nits` heading.",
+  "mcpServers": {},
+  "tools": ["fs_read", "fs_write", "execute_bash"],
+  "toolAliases": {},
+  "allowedTools": ["fs_read", "fs_write", "execute_bash"],
+  "resources": ["file://.kiro/steering/project.md"],
+  "toolsSettings": {
+    "fs_write": {
+      "allowedPaths": ["./.orchestration/reviews/**"]
+    },
+    "execute_bash": {
+      "autoAllowReadonly": true,
+      "deniedCommands": [
+        "git\\s+(commit|push|reset|checkout|switch|branch|merge|rebase|stash|tag|clean|restore|add|rm|mv).*",
+        ".*\\brm\\b.*",
+        ".*\\bmv\\b.*",
+        ".*\\bsudo\\b.*",
+        ".*>\\s*[^&].*"
+      ]
+    }
+  },
+  "includeMcpJson": false,
+  "model": null
+}

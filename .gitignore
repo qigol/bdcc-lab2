@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+lab2/data/
+.orchestration/runs/
+.venv/

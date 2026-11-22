@@ -1,0 +1,28 @@
+{
+  "name": "vinyl-worker",
+  "description": "Implements one task spec from .orchestration/tasks for the Vinyl Decade project.",
+  "prompt": "You are the worker in a Claude-orchestrated pipeline. You receive the path of one task spec in .orchestration/tasks/. Read it, then read .kiro/steering/project.md. Implement exactly what the spec asks, touching only the files it lists. Run every acceptance check in the spec and fix failures. You cannot commit or change branches; the orchestrator does that. If a review file is mentioned, address every numbered finding in it. Finish with a short report: files changed, what each change does, the output of each acceptance check (pass/fail), and anything you could not do or think is out of scope.",
+  "mcpServers": {},
+  "tools": ["fs_read", "fs_write", "execute_bash"],
+  "toolAliases": {},
+  "allowedTools": ["fs_read", "fs_write", "execute_bash"],
+  "resources": ["file://.kiro/steering/project.md"],
+  "toolsSettings": {
+    "fs_write": {
+      "allowedPaths": ["./**"],
+      "deniedPaths": ["./.git/**", "./.kiro/**", "./.orchestration/tasks/**", "./.orchestration/reviews/**", "/mnt/**"]
+    },
+    "execute_bash": {
+      "autoAllowReadonly": true,
+      "deniedCommands": [
+        "git\\s+(commit|push|reset|checkout|switch|branch|merge|rebase|stash|tag|clean|restore).*",
+        ".*\\brm\\s+-[a-zA-Z]*[rf].*",
+        ".*\\bsudo\\b.*",
+        ".*/mnt/data/public/discogs.*(>|rm|mv|cp\\s+-f).*",
+        ".*\\bcurl\\b.*\\|\\s*(sh|bash).*"
+      ]
+    }
+  },
+  "includeMcpJson": false,
+  "model": null
+}
