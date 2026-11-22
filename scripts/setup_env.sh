@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-command, re-runnable environment setup for the Vinyl Decade project.
 #
-#   scripts/setup_env.sh             # create .venv, install packages, register kernel, make data dirs
+#   scripts/setup_env.sh             # create .venv, install packages, register kernel, make data dirs, link raw dumps
 #   scripts/setup_env.sh --dry-run   # print every action, change nothing
 #   scripts/setup_env.sh --check     # verify the finished environment (non-zero exit on failure)
 #
@@ -20,7 +20,9 @@ VENV="$ROOT/.venv"
 VENV_PY="$VENV/bin/python"
 REQS="$ROOT/requirements.txt"
 USER_NAME=${USER:-$(id -un)}
-DATA_DIR="/tmp/$USER_NAME/discogs"
+# DISCOGS_SETUP_DATA_DIR overrides the data dir (used to test the link step).
+DATA_DIR="${DISCOGS_SETUP_DATA_DIR:-/tmp/$USER_NAME/discogs}"
+SOURCE_ROOT=/mnt/data/public/discogs   # shared, read-only; never written
 
 DRY_RUN=0
 CHECK=0
@@ -163,6 +165,48 @@ for sub in raw parquet; do
     run mkdir -p "$DATA_DIR/$sub"
   fi
 done
+
+# --------------------------------------------------------------------------
+# 5. Raw-dump symlinks ($DATA_DIR/raw/<name> -> shared read-only dump)
+# --------------------------------------------------------------------------
+# Snapshot dates and entities come from lab2/vinyl/config.py, and the link
+# names from config.raw_path, so they cannot drift from what the code reads.
+# The source folder is the snapshot key (2020, 2026). Nothing under
+# $SOURCE_ROOT is ever written; it is only tested and read through the links.
+link_raw_dumps() {
+  local lines year name src dst current
+  lines=$(cd "$ROOT/lab2" && "$BASE_PYTHON" - <<'PY'
+import os
+from vinyl import config
+
+for snapshot in config.SNAPSHOTS:
+    for entity in config.ROW_TAGS:
+        print(snapshot, os.path.basename(config.raw_path(snapshot, entity)))
+PY
+  ) || die "could not read snapshots from lab2/vinyl/config.py"
+
+  while read -r year name; do
+    [[ -n $name ]] || continue
+    src="$SOURCE_ROOT/$year/$name"
+    dst="$DATA_DIR/raw/$name"
+
+    if [[ ! -s $src ]]; then   # -s: exists and is not 0 bytes
+      warn "source missing or empty, not linking: $src"
+      continue
+    fi
+    if [[ -L $dst && $(readlink "$dst") == "$src" ]]; then
+      log "already linked: $name"
+      continue
+    fi
+    if [[ -e $dst && ! -L $dst ]]; then
+      warn "$dst exists and is not a symlink, leaving it alone"
+      continue
+    fi
+    run ln -sfn "$src" "$dst"
+  done <<< "$lines"
+}
+
+link_raw_dumps
 
 n=0
 shopt -s nullglob
