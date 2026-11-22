@@ -1,4 +1,5 @@
 # core
+# On this server pyspark comes from SPARK_HOME (/usr/local/spark) via PYTHONPATH; scripts/setup_env.sh skips it.
 pyspark>=4.0
 pyarrow>=14.0
 
