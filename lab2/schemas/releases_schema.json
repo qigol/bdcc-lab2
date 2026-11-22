@@ -1,0 +1,777 @@
+{
+  "fields": [
+    {
+      "metadata": {},
+      "name": "_id",
+      "nullable": true,
+      "type": "long"
+    },
+    {
+      "metadata": {},
+      "name": "artists",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "artist",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "anv",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "id",
+                    "nullable": true,
+                    "type": "long"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "join",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "name",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "companies",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "company",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "catno",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "entity_type",
+                    "nullable": true,
+                    "type": "long"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "entity_type_name",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "id",
+                    "nullable": true,
+                    "type": "long"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "name",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "country",
+      "nullable": true,
+      "type": "string"
+    },
+    {
+      "metadata": {},
+      "name": "data_quality",
+      "nullable": true,
+      "type": "string"
+    },
+    {
+      "metadata": {},
+      "name": "extraartists",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "artist",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "anv",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "id",
+                    "nullable": true,
+                    "type": "long"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "name",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "role",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "tracks",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "formats",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "format",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "_name",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_qty",
+                    "nullable": true,
+                    "type": "double"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_text",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "descriptions",
+                    "nullable": true,
+                    "type": {
+                      "fields": [
+                        {
+                          "metadata": {},
+                          "name": "description",
+                          "nullable": true,
+                          "type": {
+                            "containsNull": true,
+                            "elementType": "string",
+                            "type": "array"
+                          }
+                        }
+                      ],
+                      "type": "struct"
+                    }
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "genres",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "genre",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": "string",
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "identifiers",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "identifier",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "_description",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_type",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_value",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "labels",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "label",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "_catno",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_id",
+                    "nullable": true,
+                    "type": "long"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_name",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "master_id",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "_VALUE",
+            "nullable": true,
+            "type": "long"
+          },
+          {
+            "metadata": {},
+            "name": "_is_main_release",
+            "nullable": true,
+            "type": "boolean"
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "notes",
+      "nullable": true,
+      "type": "string"
+    },
+    {
+      "metadata": {},
+      "name": "released",
+      "nullable": true,
+      "type": "string"
+    },
+    {
+      "metadata": {},
+      "name": "series",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "series",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "_catno",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_id",
+                    "nullable": true,
+                    "type": "long"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_name",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "styles",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "style",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": "string",
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "title",
+      "nullable": true,
+      "type": "string"
+    },
+    {
+      "metadata": {},
+      "name": "tracklist",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "track",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "artists",
+                    "nullable": true,
+                    "type": {
+                      "fields": [
+                        {
+                          "metadata": {},
+                          "name": "artist",
+                          "nullable": true,
+                          "type": {
+                            "containsNull": true,
+                            "elementType": {
+                              "fields": [
+                                {
+                                  "metadata": {},
+                                  "name": "anv",
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "id",
+                                  "nullable": true,
+                                  "type": "long"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "join",
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "name",
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              ],
+                              "type": "struct"
+                            },
+                            "type": "array"
+                          }
+                        }
+                      ],
+                      "type": "struct"
+                    }
+                  },
+                  {
+                    "metadata": {},
+                    "name": "duration",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "extraartists",
+                    "nullable": true,
+                    "type": {
+                      "fields": [
+                        {
+                          "metadata": {},
+                          "name": "artist",
+                          "nullable": true,
+                          "type": {
+                            "containsNull": true,
+                            "elementType": {
+                              "fields": [
+                                {
+                                  "metadata": {},
+                                  "name": "anv",
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "id",
+                                  "nullable": true,
+                                  "type": "long"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "name",
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "role",
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              ],
+                              "type": "struct"
+                            },
+                            "type": "array"
+                          }
+                        }
+                      ],
+                      "type": "struct"
+                    }
+                  },
+                  {
+                    "metadata": {},
+                    "name": "position",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "sub_tracks",
+                    "nullable": true,
+                    "type": {
+                      "fields": [
+                        {
+                          "metadata": {},
+                          "name": "track",
+                          "nullable": true,
+                          "type": {
+                            "containsNull": true,
+                            "elementType": {
+                              "fields": [
+                                {
+                                  "metadata": {},
+                                  "name": "artists",
+                                  "nullable": true,
+                                  "type": {
+                                    "fields": [
+                                      {
+                                        "metadata": {},
+                                        "name": "artist",
+                                        "nullable": true,
+                                        "type": {
+                                          "containsNull": true,
+                                          "elementType": {
+                                            "fields": [
+                                              {
+                                                "metadata": {},
+                                                "name": "anv",
+                                                "nullable": true,
+                                                "type": "string"
+                                              },
+                                              {
+                                                "metadata": {},
+                                                "name": "id",
+                                                "nullable": true,
+                                                "type": "long"
+                                              },
+                                              {
+                                                "metadata": {},
+                                                "name": "join",
+                                                "nullable": true,
+                                                "type": "string"
+                                              },
+                                              {
+                                                "metadata": {},
+                                                "name": "name",
+                                                "nullable": true,
+                                                "type": "string"
+                                              }
+                                            ],
+                                            "type": "struct"
+                                          },
+                                          "type": "array"
+                                        }
+                                      }
+                                    ],
+                                    "type": "struct"
+                                  }
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "duration",
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "extraartists",
+                                  "nullable": true,
+                                  "type": {
+                                    "fields": [
+                                      {
+                                        "metadata": {},
+                                        "name": "artist",
+                                        "nullable": true,
+                                        "type": {
+                                          "containsNull": true,
+                                          "elementType": {
+                                            "fields": [
+                                              {
+                                                "metadata": {},
+                                                "name": "anv",
+                                                "nullable": true,
+                                                "type": "string"
+                                              },
+                                              {
+                                                "metadata": {},
+                                                "name": "id",
+                                                "nullable": true,
+                                                "type": "long"
+                                              },
+                                              {
+                                                "metadata": {},
+                                                "name": "name",
+                                                "nullable": true,
+                                                "type": "string"
+                                              },
+                                              {
+                                                "metadata": {},
+                                                "name": "role",
+                                                "nullable": true,
+                                                "type": "string"
+                                              }
+                                            ],
+                                            "type": "struct"
+                                          },
+                                          "type": "array"
+                                        }
+                                      }
+                                    ],
+                                    "type": "struct"
+                                  }
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "position",
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                {
+                                  "metadata": {},
+                                  "name": "title",
+                                  "nullable": true,
+                                  "type": "string"
+                                }
+                              ],
+                              "type": "struct"
+                            },
+                            "type": "array"
+                          }
+                        }
+                      ],
+                      "type": "struct"
+                    }
+                  },
+                  {
+                    "metadata": {},
+                    "name": "title",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    },
+    {
+      "metadata": {},
+      "name": "videos",
+      "nullable": true,
+      "type": {
+        "fields": [
+          {
+            "metadata": {},
+            "name": "video",
+            "nullable": true,
+            "type": {
+              "containsNull": true,
+              "elementType": {
+                "fields": [
+                  {
+                    "metadata": {},
+                    "name": "_duration",
+                    "nullable": true,
+                    "type": "long"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_embed",
+                    "nullable": true,
+                    "type": "boolean"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "_src",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "description",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  {
+                    "metadata": {},
+                    "name": "title",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                ],
+                "type": "struct"
+              },
+              "type": "array"
+            }
+          }
+        ],
+        "type": "struct"
+      }
+    }
+  ],
+  "type": "struct"
+}
