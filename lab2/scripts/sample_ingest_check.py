@@ -686,7 +686,7 @@ def build_and_describe(spark: SparkSession, snapshot: str, widen: bool = False) 
         if widen:
             log(f"  too few in-window releases: staging with window {WIDE_WINDOW} instead")
             tables.stage_releases(spark, snapshot, *WIDE_WINDOW)
-        tables.build_all(spark, snapshot, restage=not widen)
+        tables.build_all(spark, snapshot, tables=list(tables.TABLES), restage=not widen)
         built = list(tables.TABLES)
     except Exception as error:  # noqa: BLE001 - report and carry on
         log(f"  build_all({snapshot}) FAILED: {type(error).__name__}: {str(error)[:300]}")

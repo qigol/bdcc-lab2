@@ -14,6 +14,7 @@ layout::
 
 from __future__ import annotations
 
+import getpass
 import os
 from pathlib import Path
 
@@ -33,6 +34,17 @@ RAW_DIR: str = f"{DATA_DIR}/raw"
 
 #: Normalized Parquet tables, one sub-folder per snapshot.
 PARQUET_DIR: str = f"{DATA_DIR}/parquet"
+
+#: Scratch space for the plain-XML chunks cut by ``ingest.split_raw_xml``.
+#: Local disk, outside the repo; deleted after the Parquet write. Override
+#: with the ``DISCOGS_STAGE_DIR`` env variable.
+STAGE_DIR: str = os.environ.get(
+    "DISCOGS_STAGE_DIR", f"/tmp/{os.environ.get('USER') or getpass.getuser()}/discogs_stage"
+)
+
+#: Target size of one staged chunk, in bytes of plain XML. One chunk is
+#: parsed by one Spark task.
+STAGE_CHUNK_BYTES: int = 256 * 1024**2
 
 #: Spark schemas (JSON) for the four raw files, saved from a previous read.
 SCHEMA_DIR: Path = PROJECT_ROOT / "schemas"
@@ -60,6 +72,17 @@ ROW_TAGS: dict[str, str] = {
     "labels": "label",
     "artists": "artist",
 }
+
+#: Snapshot key -> tables ``tables.build_all`` builds when no list is given.
+#: The 2020 snapshot only feeds the snapshot comparison (``snapshots.py``),
+#: which reads these three tables. Snapshots not listed get every table.
+LEAN_SNAPSHOT_TABLES: dict[str, list[str]] = {
+    "2020": ["releases", "release_labels", "labels"],
+}
+
+#: Top-level release fields no table uses. ``tables.build_all`` drops them
+#: from the read schema. ``tracklist`` is kept for track-level credits.
+RELEASE_DROP_FIELDS: tuple[str, ...] = ("videos", "identifiers", "notes", "series")
 
 # --------------------------------------------------------------------------
 # Analytical scope
