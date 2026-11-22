@@ -7,7 +7,9 @@
 #
 # Logs go to .orchestration/runs/<task>-<role>-<n>.jsonl (stream-json events)
 # and a plain-text copy of the final answer to the matching .txt file.
-# Exit code: Kiro's exit code (or 124 on timeout).
+# Exit code: Kiro's exit code (or 124 on timeout, which also kills the whole
+# process group). KIRO_TIMEOUT sets the limit in seconds (default 3600);
+# KIRO_EXTRA appends an orchestrator note to the prompt.
 set -euo pipefail
 
 role=${1:?role: worker|reviewer}
@@ -39,15 +41,31 @@ else
 fi
 
 echo "[kiro_run] $role $task model=$model branch=$(git branch --show-current) log=$log" >&2
+[[ -n ${KIRO_EXTRA:-} ]] && prompt+=" Orchestrator note: $KIRO_EXTRA"
+
+# Run Kiro in its own process group so a timeout also kills every command
+# it started (plain `timeout` would leave Spark jobs etc. running).
 set +e
-timeout "${KIRO_TIMEOUT:-3600}" kiro-cli chat \
+setsid kiro-cli chat \
   --no-interactive \
   --agent "vinyl-$role" \
   --model "$model" \
   --trust-workspace \
   --output-format stream-json \
-  "$prompt" </dev/null >"$log" 2>"${log%.jsonl}.stderr"
-rc=$?
+  "$prompt" </dev/null >"$log" 2>"${log%.jsonl}.stderr" &
+kpid=$!
+(
+  sleep "${KIRO_TIMEOUT:-3600}"
+  if kill -0 "$kpid" 2>/dev/null; then
+    echo "[kiro_run] timeout after ${KIRO_TIMEOUT:-3600}s, killing process group $kpid" >&2
+    kill -TERM -- "-$kpid" 2>/dev/null; sleep 20; kill -KILL -- "-$kpid" 2>/dev/null
+    touch "${log%.jsonl}.timeout"
+  fi
+) &
+wpid=$!
+wait "$kpid"; rc=$?
+kill "$wpid" 2>/dev/null; wait "$wpid" 2>/dev/null
+[[ -e ${log%.jsonl}.timeout ]] && rc=124
 set -e
 
 # Pull the assistant's text out of the event stream for quick reading.
