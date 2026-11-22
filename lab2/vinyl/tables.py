@@ -14,13 +14,15 @@ Flow (run once per snapshot by ``build_all``)::
 
 The gzipped releases file is read only once. It is first saved as nested
 Parquet (``releases_staged``); every child table is then derived from that
-copy, so the slow single-core XML read is never repeated.
+copy, so the slow XML read is never repeated.
 
 Every ``build_*`` function is a pure DataFrame -> DataFrame transformation
 with no I/O, so each can be tested on a handful of rows.
 """
 
 from __future__ import annotations
+
+import os
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
@@ -437,6 +439,10 @@ def stage_releases(
     snapshot: str,
     year_min: int = config.YEAR_MIN,
     year_max: int = config.YEAR_MAX,
+    fast: bool = False,
+    keep_stage: bool = False,
+    stage_dir: str | None = None,
+    chunk_bytes: int = config.STAGE_CHUNK_BYTES,
 ) -> DataFrame:
     """Read the raw releases once and save the in-scope rows as Parquet.
 
@@ -449,6 +455,17 @@ def stage_releases(
         Snapshot key, ``"2020"`` or ``"2026"``.
     year_min, year_max : int
         Study window, both inclusive.
+    fast : bool
+        If True, split the gz into chunks with the year pre-filter
+        (``ingest.split_raw_xml``) and drop ``config.RELEASE_DROP_FIELDS``
+        from the schema. The in-window rows are the same either way.
+    keep_stage : bool
+        With ``fast=True``, keep the XML chunks after the Parquet write
+        instead of deleting them.
+    stage_dir : str, optional
+        Root of the staging area. Defaults to ``config.STAGE_DIR``.
+    chunk_bytes : int
+        Chunk size for the split.
 
     Returns
     -------
@@ -456,10 +473,60 @@ def stage_releases(
         The staged table read back from Parquet (nested columns intact,
         plus ``release_id`` and ``year``).
     """
-    raw = ingest.read_raw_xml(spark, snapshot, "releases")
+    if fast:
+        raw = ingest.read_raw_xml(
+            spark, snapshot, "releases", split=True, year_window=(year_min, year_max),
+            drop_fields=config.RELEASE_DROP_FIELDS, stage_dir=stage_dir,
+            chunk_bytes=chunk_bytes,
+        )
+    else:
+        raw = ingest.read_raw_xml(spark, snapshot, "releases")
     staged = scope_releases(raw, year_min, year_max)
-    ingest.write_table(staged, snapshot, "releases_staged")
+    path = ingest.write_table(staged, snapshot, "releases_staged")
+    if fast and not keep_stage:
+        _remove_stage_after(path, snapshot, "releases", stage_dir)
     return ingest.read_table(spark, snapshot, "releases_staged")
+
+
+def _remove_stage_after(written: str, snapshot: str, entity: str, stage_dir: str | None) -> None:
+    """Delete the XML chunks of one file once its Parquet output is complete.
+
+    Parameters
+    ----------
+    written : str
+        Parquet folder that was just written.
+    snapshot : str
+    entity : str
+    stage_dir : str, optional
+
+    Raises
+    ------
+    RuntimeError
+        If ``written`` is a local folder without Spark's ``_SUCCESS``
+        marker. The chunks are then kept so the write can be retried.
+    """
+    if "://" not in written and not os.path.exists(os.path.join(written, "_SUCCESS")):
+        raise RuntimeError(f"{written} has no _SUCCESS marker; keeping the staged XML")
+    ingest.remove_stage(snapshot, entity, stage_dir)
+
+
+def snapshot_tables(snapshot: str) -> list[str]:
+    """Return the tables ``build_all`` builds for a snapshot by default.
+
+    Parameters
+    ----------
+    snapshot : str
+        Snapshot key, ``"2020"`` or ``"2026"``.
+
+    Returns
+    -------
+    list of str
+        ``config.LEAN_SNAPSHOT_TABLES[snapshot]`` if the snapshot is listed
+        there (2020 only needs three tables), else every name in
+        ``TABLES``, in build order. Readers of a snapshot's Parquet should
+        iterate this list, not ``TABLES``.
+    """
+    return list(config.LEAN_SNAPSHOT_TABLES.get(snapshot, TABLES))
 
 
 def build_all(
@@ -467,6 +534,10 @@ def build_all(
     snapshot: str,
     tables: list[str] | None = None,
     restage: bool = False,
+    fast: bool = True,
+    keep_stage: bool = False,
+    stage_dir: str | None = None,
+    chunk_bytes: int = config.STAGE_CHUNK_BYTES,
 ) -> dict[str, str]:
     """Build and save the normalized tables of one snapshot.
 
@@ -476,11 +547,26 @@ def build_all(
     snapshot : str
         Snapshot key, ``"2020"`` or ``"2026"``.
     tables : list of str, optional
-        Names from ``TABLES`` to build. Defaults to all of them.
+        Names from ``TABLES`` to build. Defaults to
+        ``snapshot_tables(snapshot)``: the lean list for 2020 and all
+        tables otherwise. Pass ``list(TABLES)`` to build everything.
     restage : bool
         If False (default), reuse ``releases_staged`` when it already
         exists, so a failed or partial run does not re-read the XML. Set
         to True after changing the year window.
+    fast : bool
+        If True (default), every raw file is split into plain-XML chunks
+        and parsed on all cores (``ingest.split_raw_xml``). The releases
+        are also pre-filtered on year and read without
+        ``config.RELEASE_DROP_FIELDS``. If False, each gz is read by one
+        task. The output rows are the same.
+    keep_stage : bool
+        If False (default), each file's chunks are deleted as soon as its
+        Parquet output is written.
+    stage_dir : str, optional
+        Root of the staging area. Defaults to ``config.STAGE_DIR``.
+    chunk_bytes : int
+        Chunk size for the split.
 
     Returns
     -------
@@ -492,12 +578,13 @@ def build_all(
     KeyError
         If ``tables`` contains a name that is not in ``TABLES``.
     """
-    wanted = list(TABLES) if tables is None else tables
+    wanted = snapshot_tables(snapshot) if tables is None else list(tables)
     unknown = [name for name in wanted if name not in TABLES]
     if unknown:
         raise KeyError(f"Unknown table(s) {unknown}; expected names from {list(TABLES)}")
 
     written: dict[str, str] = {}
+    stage = {"stage_dir": stage_dir, "chunk_bytes": chunk_bytes}
 
     release_tables = [name for name in wanted if name in _RELEASE_BUILDERS]
     if release_tables:
@@ -508,14 +595,16 @@ def build_all(
             except Exception:  # not staged yet
                 staged = None
         if staged is None:
-            staged = stage_releases(spark, snapshot)
+            staged = stage_releases(spark, snapshot, fast=fast, keep_stage=keep_stage, **stage)
         for name in release_tables:
             builder, partition = _RELEASE_BUILDERS[name]
             written[name] = ingest.write_table(builder(staged), snapshot, name, partition)
 
     for name in wanted:
         if name in _ENTITY_BUILDERS:
-            raw = ingest.read_raw_xml(spark, snapshot, name)
+            raw = ingest.read_raw_xml(spark, snapshot, name, split=fast, **stage)
             written[name] = ingest.write_table(_ENTITY_BUILDERS[name](raw), snapshot, name)
+            if fast and not keep_stage:
+                _remove_stage_after(written[name], snapshot, name, stage_dir)
 
     return written
