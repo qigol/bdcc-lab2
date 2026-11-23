@@ -78,3 +78,11 @@ Use samples for everything except check 2. Use `timeout`. Do not run anything on
 
 ## Out of scope
 Rebuilding `release_credits` on full data (the orchestrator does that after merge), analysis results, explorers other than the two named cells, and the `.ipynb_checkpoints` folder.
+
+## Results (orchestrator, after merge)
+- Worker round 1, reviewer PASS with no findings. Merged as f44e659.
+- Majors on the full 2026 labels table: Universal 8,080 labels, Sony 3,633, Warner 3,087, Independent 2,411,275. 681 → Warner, 1866 → Sony, 134882 → Warner.
+- 2026 `release_credits` rebuilt from `releases_staged` (10g heap, 600 s, 527 MB):
+  - 22,419,839 rows: release level 15,134,191, track level 7,285,648.
+  - The old table had 15,238,351 rows. About 104 K of those were same-person, same-role duplicates within a release, now merged.
+  - Releases with a writing credit: 1,004,877 = 714,389 + 290,488, matching fact D. Duplicate keys: 0.
