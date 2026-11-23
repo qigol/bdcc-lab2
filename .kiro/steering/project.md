@@ -13,6 +13,8 @@ The main snapshot is 20261001. The 20200101 snapshot is used only for the before
 - All logic lives in `lab2/vinyl/`. Notebooks (`lab2/main.ipynb`, `lab2/explorers/*.ipynb`) only call those functions.
 - Match the existing style: `from __future__ import annotations`, type hints, numpy-style docstrings (Parameters / Returns / Raises).
 - Constants go in `lab2/vinyl/config.py`. Do not hard-code paths. Data lives under `$DISCOGS_DATA_DIR`.
+- `$DISCOGS_DATA_DIR` is `lab2/data` (gitignored). Full Parquet is in `lab2/data/parquet/{20200101,20261001}`. Set `DISCOGS_DATA_DIR=$PWD/data` when running from `lab2/`.
+- The pod has a **16 GiB memory limit** and 4 CPUs. Going over it restarts the pod and wipes `/tmp`. Run Spark with `PYSPARK_SUBMIT_ARGS="--driver-memory 4g pyspark-shell"` at most.
 - Never write to or delete anything under `/mnt/data/public/discogs`. It is shared read-only raw data.
 - Do not run Spark on the full dumps. Test on small samples only (`.limit()`, a few partitions, `timeout 600`). The orchestrator runs full-data jobs.
 - Do not commit, push, switch branches or reset. The orchestrator handles git.
