@@ -3,9 +3,10 @@
 Steps:
 
 1. ``resolve_label_roots`` walks every label up its ``parent_id`` chain
-   to the top of its tree.
-2. ``tag_major_labels`` marks the labels whose root is Universal, Sony or
-   Warner.
+   to the top of its tree. Placeholder parents such as the unnamed label
+   212 are not followed, because Universal and Warner both sit under it.
+2. ``tag_major_labels`` marks the labels whose root id is that of
+   Universal, Sony or Warner (``config.MAJOR_ROOT_IDS``).
 3. ``major_share_by_year`` splits yearly releases into major versus
    independent.
 4. ``artist_concentration`` and ``top_contributors`` describe who
@@ -20,7 +21,11 @@ from pyspark.sql import functions as F
 from . import config
 
 
-def resolve_label_roots(labels: DataFrame, max_depth: int = 12) -> DataFrame:
+def resolve_label_roots(
+    labels: DataFrame,
+    max_depth: int = 12,
+    stop_ids: tuple[int, ...] = config.PLACEHOLDER_LABEL_IDS,
+) -> DataFrame:
     """Find the top-level ancestor (root) of every label.
 
     Parameters
@@ -30,6 +35,11 @@ def resolve_label_roots(labels: DataFrame, max_depth: int = 12) -> DataFrame:
     max_depth : int
         Maximum number of parent hops to follow. Raise it if the result
         still has ``reached_root == False`` rows.
+    stop_ids : tuple of int
+        Placeholder label ids. A ``parent_id`` in this tuple is read as
+        "no parent", so a label whose parent is a placeholder is its own
+        root, and so is the placeholder label itself. Defaults to
+        ``config.PLACEHOLDER_LABEL_IDS``.
 
     Returns
     -------
@@ -38,7 +48,7 @@ def resolve_label_roots(labels: DataFrame, max_depth: int = 12) -> DataFrame:
 
         * ``label_id``, ``label_name``, ``parent_id``
         * ``root_id``, ``root_name`` - the top of the label's tree (the
-          label itself if it has no parent).
+          label itself if it has no parent or only a placeholder parent).
         * ``depth`` - number of hops from the label to its root.
         * ``reached_root`` - False if the walk stopped at ``max_depth``
           (a deeper tree, or a cycle in the data) or hit a parent id
@@ -48,16 +58,25 @@ def resolve_label_roots(labels: DataFrame, max_depth: int = 12) -> DataFrame:
     -----
     Implemented as ``max_depth`` self-joins on the labels table, one hop
     per join. The table is small next to releases, so this is cheap.
+
+    In the 2026 labels table, label 212 has no name and is the parent of
+    both Universal Music Group (38404) and Warner Music Group (2345).
+    Without ``stop_ids`` all its 32,175 labels would share one root.
+    ``parent_id`` in the output is the original value, including any
+    placeholder.
     """
-    parents = labels.select(
-        F.col("label_id").alias("_pid"), F.col("parent_id").alias("_next")
+    # A parent id in stop_ids counts as "no parent", both for the first
+    # hop and for every later hop through the parents table.
+    up = F.when(F.col("parent_id").isin(list(stop_ids)), F.lit(None)).otherwise(
+        F.col("parent_id")
     )
+    parents = labels.select(F.col("label_id").alias("_pid"), up.alias("_next"))
     walk = labels.select(
         "label_id",
         "label_name",
         "parent_id",
         F.col("label_id").alias("root_id"),
-        F.col("parent_id").alias("_up"),
+        up.alias("_up"),
         F.lit(0).alias("depth"),
     )
     for _ in range(max_depth):
@@ -90,7 +109,7 @@ def resolve_label_roots(labels: DataFrame, max_depth: int = 12) -> DataFrame:
 
 def tag_major_labels(
     label_roots: DataFrame,
-    major_roots: dict[str, str] | None = None,
+    major_root_ids: dict[str, int] | None = None,
 ) -> DataFrame:
     """Mark each label as Universal, Sony, Warner or Independent.
 
@@ -98,9 +117,9 @@ def tag_major_labels(
     ----------
     label_roots : DataFrame
         Output of ``resolve_label_roots``.
-    major_roots : dict of str to str, optional
-        Major name -> exact ``label_name`` of its root label. Defaults
-        to ``config.MAJOR_ROOTS``.
+    major_root_ids : dict of str to int, optional
+        Major name -> ``label_id`` of its root label. Defaults to
+        ``config.MAJOR_ROOT_IDS``.
 
     Returns
     -------
@@ -110,14 +129,15 @@ def tag_major_labels(
 
     Notes
     -----
-    "Independent" here means "not under one of the three roots in
-    Discogs", which depends on how completely contributors have filled
-    in parent labels. State this limitation next to any result.
+    Matching is on ``root_id``. "Independent" here means "not linked to
+    one of the three majors' trees in Discogs", which depends on how
+    completely contributors have filled in parent labels. State this
+    limitation next to any result.
     """
-    major_roots = major_roots or config.MAJOR_ROOTS
+    major_root_ids = major_root_ids or config.MAJOR_ROOT_IDS
     major = F.lit("Independent")
-    for name, root_label in major_roots.items():
-        major = F.when(F.col("root_name") == root_label, F.lit(name)).otherwise(major)
+    for name, root_id in major_root_ids.items():
+        major = F.when(F.col("root_id") == root_id, F.lit(name)).otherwise(major)
     return label_roots.withColumn("major", major).withColumn(
         "is_major", F.col("major") != "Independent"
     )
