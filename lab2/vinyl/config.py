@@ -74,10 +74,13 @@ ROW_TAGS: dict[str, str] = {
 }
 
 #: Snapshot key -> tables ``tables.build_all`` builds when no list is given.
-#: The 2020 snapshot only feeds the snapshot comparison (``snapshots.py``),
-#: which reads these three tables. Snapshots not listed get every table.
+#: The 2020 snapshot feeds the snapshot comparison (``snapshots.py``), which
+#: reads releases, release_labels and labels. Its artists and masters are
+#: also built so that all four dump files of both snapshots are parsed, as
+#: the gameplan states. The other release child tables are skipped for 2020.
+#: Snapshots not listed get every table.
 LEAN_SNAPSHOT_TABLES: dict[str, list[str]] = {
-    "2020": ["releases", "release_labels", "labels"],
+    "2020": ["releases", "release_labels", "labels", "artists", "masters"],
 }
 
 #: Top-level release fields no table uses. ``tables.build_all`` drops them

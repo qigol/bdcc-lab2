@@ -62,3 +62,10 @@ The 2020 snapshot by year: 2016 295,865 · 2017 292,388 · 2018 276,507 · 2019 
 
 ## Open
 - 2020 artists/masters are not built (lean 2020). The gameplan's "all four files" wording could be matched with `build_all(spark, "2020", tables=["artists", "masters"])`, about 15 min.
+
+## T03b - 2020 artists and masters (2026-11-23)
+These were added so that all four dump files of both snapshots are parsed, matching the gameplan's "all four files each".
+- `config.LEAN_SNAPSHOT_TABLES["2020"]` now also lists `artists` and `masters`.
+- Ran `build_all(spark, "2020", tables=["artists", "masters"])`: 658 s.
+- Rows: artists 6,625,426, masters 1,616,539. No staging chunks are left.
+- The stack traces in the logs come from Spark's `WARN FileStreamSink: Assume no metadata directory ... part-*.xml`. They are harmless.
