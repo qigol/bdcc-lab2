@@ -37,7 +37,7 @@ TABLES: dict[str, str] = {
     "release_formats": "One row per (release, format) with a reissue flag.",
     "release_labels": "One row per (release, label) with catalog number.",
     "release_artists": "One row per (release, main artist).",
-    "release_credits": "One row per (release, credited person, role).",
+    "release_credits": "One row per (release, credited person, role), from release and track credits.",
     "release_companies": "One row per (release, company), e.g. pressing plants.",
     "labels": "One row per label with its parent label.",
     "artists": "One row per artist.",
@@ -258,37 +258,27 @@ def build_release_artists(staged: DataFrame) -> DataFrame:
     )
 
 
-def build_release_credits(staged: DataFrame) -> DataFrame:
-    """Build one row per (release, credited person, role).
+def _split_credit_roles(credits: DataFrame, level: str) -> DataFrame:
+    """Turn exploded credit structs into one row per (person, role).
 
     Parameters
     ----------
-    staged : DataFrame
-        Output of ``scope_releases``.
+    credits : DataFrame
+        Columns ``release_id``, ``year`` and ``artist`` (a struct with
+        ``id``, ``name`` and ``role``).
+    level : str
+        Value of the ``level`` column, ``"release"`` or ``"track"``.
 
     Returns
     -------
     DataFrame
         Columns ``release_id``, ``year``, ``artist_id``, ``artist_name``,
-        ``role``.
-
-    Notes
-    -----
-    Discogs stores roles as one string, for example
-    ``"Producer, Mixed By [Mix]"``. Bracketed detail is removed and the
-    string is split on commas, giving one row per role
-    (``"Producer"`` and ``"Mixed By"``).
-
-    Only release-level credits (``extraartists``) are used. TODO: decide
-    whether to add track-level credits (``tracklist.track.extraartists``).
+        ``role``, ``level``.
     """
     artist = F.col("artist")
     without_brackets = F.regexp_replace(artist["role"], r"\s*\[[^\]]*\]", "")
     return (
-        staged.select(
-            "release_id", "year", F.explode("extraartists.artist").alias("artist")
-        )
-        .select(
+        credits.select(
             "release_id",
             "year",
             artist["id"].alias("artist_id"),
@@ -297,6 +287,69 @@ def build_release_credits(staged: DataFrame) -> DataFrame:
         )
         .withColumn("role", F.trim("role"))
         .where(F.col("role") != "")
+        .withColumn("level", F.lit(level))
+    )
+
+
+def build_release_credits(staged: DataFrame) -> DataFrame:
+    """Build one row per (release, credited person, role).
+
+    Parameters
+    ----------
+    staged : DataFrame
+        Output of ``scope_releases``. Needs ``release_id``, ``year``,
+        ``extraartists`` and, for track credits, ``tracklist``. A
+        missing ``tracklist`` column, a null ``tracklist``, a null
+        ``track`` array and a null ``extraartists`` are all allowed and
+        give no rows.
+
+    Returns
+    -------
+    DataFrame
+        Columns ``release_id``, ``year``, ``artist_id``, ``artist_name``,
+        ``role``, ``level``. ``level`` is ``"release"`` if the person has
+        that role in the release-level credits (``extraartists``), else
+        ``"track"`` (``tracklist.track.extraartists``).
+
+    Notes
+    -----
+    Discogs stores roles as one string, for example
+    ``"Producer, Mixed By [Mix]"``. Bracketed detail is removed and the
+    string is split on commas, giving one row per role
+    (``"Producer"`` and ``"Mixed By"``).
+
+    Rows are deduplicated to one per (``release_id``, ``artist_id``,
+    ``artist_name``, ``role``), so a person credited for the same role on
+    the release and on several tracks appears once. Consumers that count
+    people per release (``labels.top_contributors``,
+    ``networks.credit_edges``) filter on ``role`` only and are not
+    affected by ``level``. Tracks inside ``sub_tracks`` are not read.
+    """
+    release_level = _split_credit_roles(
+        staged.select(
+            "release_id", "year", F.explode("extraartists.artist").alias("artist")
+        ),
+        "release",
+    )
+    if "tracklist" not in staged.columns:
+        combined = release_level
+    else:
+        tracks = staged.select(
+            "release_id", "year", F.explode("tracklist.track").alias("track")
+        )
+        track_level = _split_credit_roles(
+            tracks.select(
+                "release_id",
+                "year",
+                F.explode("track.extraartists.artist").alias("artist"),
+            ),
+            "track",
+        )
+        combined = release_level.unionByName(track_level)
+    return combined.groupBy("release_id", "year", "artist_id", "artist_name", "role").agg(
+        F.when(F.max(F.when(F.col("level") == "release", 1).otherwise(0)) == 1, "release")
+        .otherwise("track")
+        .alias("level")
     )
 
 

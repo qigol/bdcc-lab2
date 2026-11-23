@@ -27,7 +27,8 @@ if TYPE_CHECKING:  # only for type hints; not needed at run time
     import pandas as pd
 
 #: Discogs placeholder artist ids that are not real collaborators:
-#: 194 = "Various", 355 = "Unknown Artist". TODO: confirm in the artists table.
+#: 194 = "Various", 355 = "Unknown Artist". Confirmed in T04: neither id is
+#: in the artists file; their names come from ``release_artists``.
 PLACEHOLDER_ARTIST_IDS: tuple[int, ...] = (194, 355)
 
 

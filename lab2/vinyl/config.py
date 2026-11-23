@@ -95,20 +95,38 @@ RELEASE_DROP_FIELDS: tuple[str, ...] = ("videos", "identifiers", "notes", "serie
 YEAR_MIN: int = 2016
 YEAR_MAX: int = 2026
 
-#: Root labels of the three majors, matched on the ``name`` field of the
-#: labels file. TODO: confirm these names (or swap in label ids) against
-#: the labels table once it is loaded.
-MAJOR_ROOTS: dict[str, str] = {
-    "Universal": "Universal Music Group",
-    "Sony": "Sony Music Entertainment",
-    "Warner": "Warner Music Group",
+#: Root label id of each major's tree in the labels file (checked in T04
+#: against the 2026 labels table). Universal = Universal Music Group
+#: (38404), Sony = Sony Corporation (353657, the top of the Sony Music
+#: Entertainment chain), Warner = Warner Music Group (2345). Universal and
+#: Warner are matched on ids because both sit under the unnamed label 212.
+MAJOR_ROOT_IDS: dict[str, int] = {
+    "Universal": 38404,
+    "Sony": 353657,
+    "Warner": 2345,
 }
+
+#: Label ids that are placeholder parents, not real owners. Label 212 has
+#: no name and holds 32,175 unrelated labels in 2026, including Universal
+#: and Warner. ``labels.resolve_label_roots`` treats a parent id listed
+#: here as "no parent", so each group below it becomes its own root.
+PLACEHOLDER_LABEL_IDS: tuple[int, ...] = (212,)
+
+#: Last release year that is complete in the main snapshot. The dump is
+#: from 1 October 2026, so 2026 is a partial year.
+LAST_FULL_YEAR: int = 2025
+
+#: Year -> expected share of a full year's releases that fall in the
+#: months the dump covers. For 2026 that is January-September: the mean
+#: share of month-dated releases dated Jan-Sep in 2016-2025 (range
+#: 0.728-0.747, checked in T04). Used by ``snapshots.estimate_undercount``.
+PARTIAL_YEAR_SHARE: dict[int, float] = {2026: 0.739}
 
 #: Format description tags that mark a release as a reissue of older music.
 REISSUE_TAGS: tuple[str, ...] = ("Reissue", "Repress", "Remastered")
 
 #: Credit roles counted as "producer / engineer" for the credit network.
-#: TODO: review against the most common roles found in the credits table.
+#: Checked against the top credit roles in T04; mastering roles "Remastered By" and "Lacquer Cut By" added.
 PRODUCTION_ROLES: tuple[str, ...] = (
     "Producer",
     "Co-producer",
@@ -117,6 +135,8 @@ PRODUCTION_ROLES: tuple[str, ...] = (
     "Mixed By",
     "Mastered By",
     "Recorded By",
+    "Remastered By",
+    "Lacquer Cut By",
 )
 
 #: Credit roles counted as "writer" when profiling a label's output.

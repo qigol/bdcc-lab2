@@ -16,6 +16,8 @@ from __future__ import annotations
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
+from . import config
+
 
 def label_parent_changes(labels_old: DataFrame, labels_new: DataFrame) -> DataFrame:
     """Compare every label's parent between the two snapshots.
@@ -135,6 +137,7 @@ def estimate_undercount(
     yearly_counts: DataFrame,
     old_snapshot_year: int = 2020,
     new_snapshot_year: int = 2027,
+    partial_year_share: dict[int, float] | None = None,
 ) -> DataFrame:
     """Scale up recent years using the completeness seen in the old snapshot.
 
@@ -154,31 +157,55 @@ def estimate_undercount(
     new_snapshot_year : int
         Year used to compute age in the later snapshot. The default of
         2027 treats 1 October 2026 as roughly the start of 2027, so 2026
-        has age 1. TODO: revisit - 2026 is a partial year (nine months),
-        so its estimate needs an extra correction or should be dropped.
+        has age 1. This is reasonable because 2026 is also scaled for
+        its missing months through ``partial_year_share``: after that
+        scaling it is treated like a year that has just ended, the same
+        as 2019 in January 2020.
+    partial_year_share : dict of int to float, optional
+        Year -> expected share of a full year's releases that fall in
+        the months the dump covers (for 2026, January to September).
+        Defaults to ``config.PARTIAL_YEAR_SHARE``. Pass ``{}`` to switch
+        the correction off.
 
     Returns
     -------
     DataFrame
         ``yearly_counts`` plus ``age``, ``completeness`` (null when the
         year is old enough to have no matching age, which is read as
-        complete) and ``n_estimated`` (``n_releases / completeness``).
+        complete), ``partial_year`` (boolean, True for years in
+        ``partial_year_share``) and ``n_estimated``. For full years
+        ``n_estimated = n_releases / completeness``; for partial years
+        ``n_estimated = n_releases / share / completeness``.
 
     Notes
     -----
     Assumes contributors catalogue at the same pace now as in 2016-2019.
     This is an estimate for the limitations section, not a correction to
     apply to the main results.
+
+    The seasonal share (``config.PARTIAL_YEAR_SHARE``) assumes releases
+    are spread over the months as in 2016-2025, and that month coverage
+    in 2026 is like earlier years.
     """
+    if partial_year_share is None:
+        partial_year_share = config.PARTIAL_YEAR_SHARE
+    share = F.lit(None).cast("double")
+    for year, value in partial_year_share.items():
+        share = F.when(F.col("year") == year, F.lit(float(value))).otherwise(share)
     by_age = lag.select(
         (F.lit(old_snapshot_year) - F.col("year")).alias("age"), "completeness"
     ).where(F.col("age") >= 1)
     return (
         yearly_counts.withColumn("age", F.lit(new_snapshot_year) - F.col("year"))
         .join(by_age, "age", "left")
+        .withColumn("_share", share)
+        .withColumn("partial_year", F.col("_share").isNotNull())
         .withColumn(
             "n_estimated",
-            F.col("n_releases") / F.coalesce(F.col("completeness"), F.lit(1.0)),
+            F.col("n_releases")
+            / F.coalesce(F.col("_share"), F.lit(1.0))
+            / F.coalesce(F.col("completeness"), F.lit(1.0)),
         )
+        .drop("_share")
         .orderBy("year")
     )
