@@ -37,12 +37,12 @@ The script:
 1. Creates `.venv/` with `/opt/conda/bin/python3 -m venv --system-site-packages`, so the conda packages (pandas, numpy, scikit-learn, jupyterlab and others) are reused.
 2. Installs `requirements.txt` without the `pyspark` line, and without `--upgrade`, so conda packages stay as they are. It adds `python-igraph`, `leidenalg`, `node2vec` and `umap-learn`.
 3. Registers a Jupyter kernel named `vinyl` (display name "Python (vinyl)"). Its `kernel.json` sets `DISCOGS_DATA_DIR`, `SPARK_HOME` and `PYTHONPATH`, so notebooks find Spark and the data.
-4. Creates `/tmp/$USER/discogs/{raw,parquet}`, then symlinks the shared dumps from `/mnt/data/public/discogs/<year>/` into `raw/` (existing correct links are kept, wrong ones are replaced, missing or 0-byte sources are skipped with a warning). It warns if `raw/` has fewer than 8 non-empty `.xml.gz` files.
+4. Creates `lab2/data/{raw,parquet}`, then symlinks the shared dumps from `/mnt/data/public/discogs/<year>/` into `raw/` (existing correct links are kept, wrong ones are replaced, missing or 0-byte sources are skipped with a warning). It warns if `raw/` has fewer than 8 non-empty `.xml.gz` files.
 
 Then, in each shell:
 
 ```bash
-export DISCOGS_DATA_DIR=/tmp/$USER/discogs
+export DISCOGS_DATA_DIR=$PWD/lab2/data
 source .venv/bin/activate
 ```
 
@@ -58,7 +58,7 @@ $DISCOGS_DATA_DIR/
     parquet/<snapshot>/<table>/                                   (written by tables.build_all)
 ```
 
-The default is `/tmp/$USER/discogs`. The home filesystem `/home2` is nearly full, so data stays out of the repo. `/tmp` is not backed up and may be cleared, so Parquet can be rebuilt by re-running explorer 01. The shared dumps in `/mnt/data/public/discogs` are read-only; never write there.
+The default is `lab2/data` (gitignored). It holds only symlinks to the raw dumps and a few GB of Parquet. Do not use `/tmp` for it: the JupyterHub pod's `/tmp` is wiped whenever the pod restarts. The pod has a 16 GiB memory limit, so keep the Spark driver heap at 10 GB or less. `ingest.split_raw_xml` stages temporary XML chunks (about 35 GB at peak) in `/tmp/$USER/discogs_stage` and deletes them after each Parquet write. The shared dumps in `/mnt/data/public/discogs` are read-only; never write there.
 
 ## Pipeline order
 

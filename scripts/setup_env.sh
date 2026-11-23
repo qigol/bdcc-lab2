@@ -21,7 +21,7 @@ VENV_PY="$VENV/bin/python"
 REQS="$ROOT/requirements.txt"
 USER_NAME=${USER:-$(id -un)}
 # DISCOGS_SETUP_DATA_DIR overrides the data dir (used to test the link step).
-DATA_DIR="${DISCOGS_SETUP_DATA_DIR:-/tmp/$USER_NAME/discogs}"
+DATA_DIR="${DISCOGS_SETUP_DATA_DIR:-$ROOT/lab2/data}"
 SOURCE_ROOT=/mnt/data/public/discogs   # shared, read-only; never written
 
 DRY_RUN=0
@@ -156,7 +156,7 @@ else
 fi
 
 # --------------------------------------------------------------------------
-# 4. Data directories (kept in /tmp because /home2 is nearly full)
+# 4. Data directories (lab2/data, gitignored; /tmp is wiped on pod restart)
 # --------------------------------------------------------------------------
 for sub in raw parquet; do
   if [[ -d $DATA_DIR/$sub ]]; then
