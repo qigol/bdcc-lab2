@@ -8,3 +8,8 @@
 2. **Top "independent" artist.** It is "THIS IS WHAT I HEAR WHEN YOU TALK" (6351861, about 3.4 K releases), which looks like a bulk uploader. Check it before naming top artists in the report, and consider adding it to a placeholder or exclusion list.
 3. **Decisions checklists** in explorers 02-05 are still open. Fill them from the executed outputs in `.orchestration/runs/T05..T08/` when drafting the report (T12).
 4. **Executed explorer outputs**: done. They are committed in `lab2/explorers/executed/`.
+
+## Status (2026-11-24)
+- **Item 1 resolved in T08b.** Self-released labels (1818 plus the "Not On Label …" pattern) now have their own `self_released` class in `parent_coverage`. Releases by class in 2016-2026: self-released 12-18%, in a tree 41-46%, standing alone 38-45%.
+- **Item 2 resolved in T08b.** 6351861 is a real harsh-noise-wall project, not a placeholder. Dropping prolific artist-years (>= 300 releases) leaves the style-change ranking intact (Spearman 0.995). Only Progressive House loses about 25% of its gain. Mention this as a robustness check in the report.
+- **Item 3:** fill the checklists from `lab2/explorers/executed/`.
