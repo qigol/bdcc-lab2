@@ -162,6 +162,17 @@ PRODUCTION_ROLES: tuple[str, ...] = (
     "Lacquer Cut By",
 )
 
+#: Edge-weight cut-off (minimum shared releases) for each RQ4 graph, so that
+#: it fits on the driver. Measured on 2026 (nodes / edges): collaboration
+#: at 2 is 114 K / 152 K, credit at 3 is 209 K / 334 K, artist-label at 3
+#: is 350 K / 386 K. Keys: ``"collaboration"``, ``"credit"``,
+#: ``"artist_label"``. Used by ``explorers/06_networks_and_communities``.
+GRAPH_MIN_WEIGHT: dict[str, int] = {
+    "collaboration": 2,
+    "credit": 3,
+    "artist_label": 3,
+}
+
 #: Credit roles counted as "writer" when profiling a label's output.
 WRITING_ROLES: tuple[str, ...] = (
     "Written-By",
