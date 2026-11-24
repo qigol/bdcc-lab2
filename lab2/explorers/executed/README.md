@@ -9,3 +9,4 @@ These are copies of the explorer notebooks with outputs, from runs on the full P
 | 03_formats_and_reissues | T06, 2026-11-24 | |
 | 04_labels_and_majors | T08b, 2026-11-24 | Parent coverage with the self-released class. |
 | 05_snapshot_comparison | T08, 2026-11-24 | |
+| 06_networks_and_communities | T09, 2026-11-24 (41 min) | Credit-graph resolution sweep took 421 s. |
