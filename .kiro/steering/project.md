@@ -20,3 +20,10 @@ The main snapshot is 20261001. The 20200101 snapshot is used only for the before
 - Do not commit, push, switch branches or reset. The orchestrator handles git.
 - Stay inside the files the task spec names. If something outside scope needs changing, say so in your summary instead of doing it.
 - Notebooks are JSON. Edit only the cells the task names, and keep the outputs and metadata of other cells.
+
+## Python and search
+- Run all Python with the repo venv: `<repo root>/.venv/bin/python`. From `lab2/` that is `../.venv/bin/python`. It has igraph, leidenalg, gensim, umap, hdbscan and sklearn.
+  - Spark needs `SPARK_HOME=/usr/local/spark` and `PYTHONPATH=$SPARK_HOME/python/lib/py4j-0.10.9.9-src.zip:$SPARK_HOME/python:$PWD`.
+  - `/opt/conda/bin/python3` is the system Python and lacks igraph and others. Do not use it.
+  - Notebooks run on the `vinyl` kernel.
+- **Never run `find /` or any search outside the repo.** The filesystem is NFS and such searches hang for many minutes. Search only inside the repo, or ask the venv directly, for example `.venv/bin/python -c "import igraph; print(igraph.__file__)"`.
