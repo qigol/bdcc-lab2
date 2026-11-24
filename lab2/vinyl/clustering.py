@@ -645,13 +645,53 @@ def combine_features(
     return np.hstack(parts).astype(np.float32), artist_ids
 
 
+def umap_knn(
+    features: "np.ndarray",
+    n_neighbors: int = 30,
+    metric: str = "cosine",
+) -> "tuple[np.ndarray, np.ndarray]":
+    """Compute the nearest-neighbour graph UMAP builds on, once.
+
+    Passing the result to several ``reduce_umap`` calls (for example the
+    2-D plot and the 10-D clustering input) skips the slowest shared step.
+
+    Parameters
+    ----------
+    features : numpy.ndarray
+        Matrix of shape (n_artists, n_features).
+    n_neighbors : int
+        Neighbours per point. Must equal ``n_neighbors`` of the
+        ``reduce_umap`` calls that reuse the graph.
+    metric : str
+        Distance used in the input space.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(indices, distances)``, each of shape (n_artists, n_neighbors).
+
+    Notes
+    -----
+    Runs NN-descent on all cores (``n_jobs=-1``), so neighbours can differ
+    slightly between runs.
+    """
+    from umap.umap_ import nearest_neighbors
+
+    indices, distances, _ = nearest_neighbors(
+        features, n_neighbors, metric, {}, angular=False,
+        random_state=None, low_memory=True, use_pynndescent=True, n_jobs=-1,
+    )
+    return indices, distances
+
+
 def reduce_umap(
     features: "np.ndarray",
     n_components: int = 2,
     n_neighbors: int = 30,
     min_dist: float = 0.0,
     metric: str = "cosine",
-    seed: int = 42,
+    seed: int | None = None,
+    knn: "tuple[np.ndarray, np.ndarray] | None" = None,
 ) -> "np.ndarray":
     """Reduce a feature matrix to a few dimensions with UMAP.
 
@@ -670,8 +710,15 @@ def reduce_umap(
         what HDBSCAN wants.
     metric : str
         Distance used in the input space.
-    seed : int
-        Random seed.
+    seed : int or None
+        Random seed. ``None`` (default) lets UMAP use every core. A fixed
+        seed makes the result reproducible but forces a single thread,
+        which on 194K artists took over an hour per run. For a stable
+        report, save the embedding once and reuse the file.
+    knn : tuple of numpy.ndarray or None
+        ``(indices, distances)`` from ``umap_knn`` with the same
+        ``n_neighbors`` and ``metric``. Reusing it skips the neighbour
+        search.
 
     Returns
     -------
@@ -682,16 +729,24 @@ def reduce_umap(
     -----
     Requires the ``umap-learn`` package.
     """
+    import warnings
+
     import umap
 
+    precomputed = None if knn is None else (knn[0], knn[1], None)
     reducer = umap.UMAP(
         n_components=n_components,
         n_neighbors=n_neighbors,
         min_dist=min_dist,
         metric=metric,
         random_state=seed,
+        precomputed_knn=precomputed if precomputed is not None else (None, None, None),
     )
-    return reducer.fit_transform(features)
+    with warnings.catch_warnings():
+        # Without a search index UMAP warns that transform() is unavailable;
+        # only fit_transform is used here.
+        warnings.filterwarnings("ignore", message=".*precomputed_knn.*")
+        return reducer.fit_transform(features)
 
 
 def cluster_hdbscan(
