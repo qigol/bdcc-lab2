@@ -173,6 +173,16 @@ GRAPH_MIN_WEIGHT: dict[str, int] = {
     "artist_label": 3,
 }
 
+#: Smallest group of artists that HDBSCAN accepts as a cluster in the
+#: artist clustering (``clustering.cluster_hdbscan``). The sweep in
+#: ``explorers/07_artist_clustering`` compares 25, 50, 100 and 200.
+HDBSCAN_MIN_CLUSTER_SIZE: int = 50
+
+#: ``n_neighbors`` of the UMAP runs (``clustering.reduce_umap``) in the
+#: artist clustering: how many neighbours define the local structure.
+#: Same as the ``reduce_umap`` default, which explorer 07 used.
+UMAP_N_NEIGHBORS: int = 30
+
 #: Credit roles counted as "writer" when profiling a label's output.
 WRITING_ROLES: tuple[str, ...] = (
     "Written-By",

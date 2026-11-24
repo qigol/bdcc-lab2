@@ -16,6 +16,7 @@ snapshots   Snapshot comparison: ownership changes and cataloguing lag.
 networks    RQ4: edge lists, centrality, Leiden communities.
 clustering  RQ4: artist features, node2vec, UMAP, HDBSCAN.
 viz         Shared matplotlib helpers so every figure looks the same.
+export      Small aggregated tables (CSV) for the dashboard.
 """
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     "networks",
     "clustering",
     "viz",
+    "export",
 ]
