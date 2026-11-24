@@ -112,6 +112,29 @@ MAJOR_ROOT_IDS: dict[str, int] = {
 #: here as "no parent", so each group below it becomes its own root.
 PLACEHOLDER_LABEL_IDS: tuple[int, ...] = (212,)
 
+#: Label ids that Discogs uses as a "released by the artist" placeholder.
+#: Label 1818, "Not On Label", holds 4-6% of each year's in-scope releases
+#: in 2026 (24,562 in 2016, 11,613 in 2025). It is not a company. Its
+#: ``parent_id`` is 205754 (Stolen Riff Records), whose parent is 212; that
+#: link is a data-entry error, and 1818 has no child labels.
+#: ``labels.parent_coverage`` reports these labels in their own class.
+SELF_RELEASED_LABEL_IDS: tuple[int, ...] = (1818,)
+
+#: Regular expression (Java syntax, as used by ``Column.rlike``) for the
+#: names of the other self-release placeholders, for example "Not On Label
+#: (X Self-released)" (id 3550708). ``\b`` keeps it from matching a name
+#: such as "Not On Labelle". ``labels.self_released_label_ids`` combines it
+#: with ``SELF_RELEASED_LABEL_IDS``.
+SELF_RELEASED_LABEL_PATTERN: str = r"(?i)^not on label\b"
+
+#: An (artist, year) pair with at least this many releases counts as
+#: prolific. In 2026, 35 artist-years reach 300 releases (16,346 releases,
+#: 0.4% of 3.83 M). They are real artists, for example the noise project
+#: 6351861 with 1,233 releases in 2019, and they barely move the totals.
+#: They do distort niche styles: that project alone is 22% of the 2019
+#: "Harsh Noise Wall" releases. Used by ``trends.prolific_artist_years``.
+PROLIFIC_ARTIST_MIN_PER_YEAR: int = 300
+
 #: Last release year that is complete in the main snapshot. The dump is
 #: from 1 October 2026, so 2026 is a partial year.
 LAST_FULL_YEAR: int = 2025
