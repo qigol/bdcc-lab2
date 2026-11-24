@@ -2,6 +2,8 @@
 
 All functions take the ``release_styles`` (or ``release_genres``) table
 and return small aggregated DataFrames that are safe to ``.toPandas()``.
+``drop_prolific_releases`` is the exception: it returns a filtered copy of
+the tag table, not a small aggregate.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ from typing import TYPE_CHECKING
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as F
 
-from . import config
+from . import config, networks
 
 if TYPE_CHECKING:  # only for type hints; not needed at run time
     import pandas as pd
@@ -492,3 +494,93 @@ def entropy_sensitivity(
         "year", F.col("evenness").alias("evenness_full")
     )
     return full.join(sub, "year", "left").orderBy("year")
+
+
+def prolific_artist_years(
+    release_artists: DataFrame,
+    min_per_year: int = config.PROLIFIC_ARTIST_MIN_PER_YEAR,
+    exclude_ids: tuple[int, ...] = networks.PLACEHOLDER_ARTIST_IDS,
+) -> DataFrame:
+    """Find the (artist, year) pairs with a very large number of releases.
+
+    A few real artists self-release thousands of albums a year, which can
+    make up a large part of a small style.
+
+    Parameters
+    ----------
+    release_artists : DataFrame
+        Columns ``release_id``, ``year``, ``artist_id``, ``artist_name``
+        (one row per release and main artist).
+    min_per_year : int
+        Keep pairs with at least this many distinct releases. Defaults
+        to ``config.PROLIFIC_ARTIST_MIN_PER_YEAR``.
+    exclude_ids : tuple of int
+        Artist ids to ignore, such as "Various". Defaults to
+        ``networks.PLACEHOLDER_ARTIST_IDS``.
+
+    Returns
+    -------
+    DataFrame
+        One row per prolific (artist, year) with ``artist_id``,
+        ``artist_name`` (the alphabetically first name seen), ``year``
+        and ``n_releases`` (distinct releases), sorted by ``n_releases``
+        descending.
+    """
+    return (
+        release_artists.where(
+            F.col("artist_id").isNotNull()
+            & F.col("year").isNotNull()
+            & ~F.col("artist_id").isin(list(exclude_ids))
+        )
+        .groupBy("artist_id", "year")
+        .agg(
+            F.min("artist_name").alias("artist_name"),
+            F.countDistinct("release_id").alias("n_releases"),
+        )
+        .where(F.col("n_releases") >= min_per_year)
+        .select("artist_id", "artist_name", "year", "n_releases")
+        .orderBy(F.desc("n_releases"), F.asc("artist_id"), F.asc("year"))
+    )
+
+
+def drop_prolific_releases(
+    release_tags: DataFrame,
+    release_artists: DataFrame,
+    prolific: DataFrame,
+) -> DataFrame:
+    """Remove the releases of prolific (artist, year) pairs from a tag table.
+
+    This is a robustness check, not the main definition. Run the
+    analysis on the full table first, then on this one. If a style's
+    trend shrinks a lot without these releases, it reflects one artist's
+    output and not a scene.
+
+    Parameters
+    ----------
+    release_tags : DataFrame
+        ``release_styles`` or ``release_genres``: columns ``release_id``
+        and ``year``, plus any others.
+    release_artists : DataFrame
+        Columns ``release_id``, ``year``, ``artist_id``. Main artists
+        only, as in the ``release_artists`` table.
+    prolific : DataFrame
+        Output of ``prolific_artist_years``: columns ``artist_id`` and
+        ``year``.
+
+    Returns
+    -------
+    DataFrame
+        ``release_tags`` without the rows of any release whose main
+        artists include a pair in ``prolific``. A release is matched on
+        ``release_id`` and ``year``, and the artist's year must be the
+        pair's year. The same artist's releases in other years are kept.
+        Columns are unchanged.
+    """
+    pairs = prolific.select("artist_id", "year").distinct()
+    dropped = (
+        release_artists.select("release_id", "year", "artist_id")
+        .join(pairs, ["artist_id", "year"])
+        .select("release_id", "year")
+        .distinct()
+    )
+    return release_tags.join(dropped, ["release_id", "year"], "left_anti")

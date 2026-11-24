@@ -13,8 +13,9 @@ Steps:
    dominates each label's output. ``group_concentration`` does the same
    for a whole group such as a major's tree.
 5. ``parent_coverage`` shows how many releases sit on labels with no
-   parent information, and ``credit_level_coverage`` compares release-
-   and track-level credits.
+   parent information (``self_released_label_ids`` finds the "Not On
+   Label" placeholders it sets apart), and ``credit_level_coverage``
+   compares release- and track-level credits.
 """
 
 from __future__ import annotations
@@ -394,10 +395,41 @@ def group_concentration(
     )
 
 
+def self_released_label_ids(labels: DataFrame) -> DataFrame:
+    """List the labels that stand for "released by the artist".
+
+    Parameters
+    ----------
+    labels : DataFrame
+        Columns ``label_id`` and ``label_name``.
+
+    Returns
+    -------
+    DataFrame
+        One column, ``label_id`` (long), with one row per id: every id in
+        ``config.SELF_RELEASED_LABEL_IDS`` plus every label whose
+        ``label_name`` matches ``config.SELF_RELEASED_LABEL_PATTERN``.
+
+    Notes
+    -----
+    The fixed ids are returned even if they are missing from ``labels``.
+    Pass the result to ``parent_coverage(..., self_released=...)``.
+    """
+    spark = labels.sparkSession
+    fixed = spark.createDataFrame(
+        [(int(i),) for i in config.SELF_RELEASED_LABEL_IDS], "label_id long"
+    )
+    by_name = labels.where(
+        F.col("label_name").rlike(config.SELF_RELEASED_LABEL_PATTERN)
+    ).select(F.col("label_id").cast("long").alias("label_id"))
+    return fixed.unionByName(by_name).where(F.col("label_id").isNotNull()).distinct()
+
+
 def parent_coverage(
     release_labels: DataFrame,
     label_roots: DataFrame,
     stop_ids: tuple[int, ...] = config.PLACEHOLDER_LABEL_IDS,
+    self_released: DataFrame | None = None,
 ) -> DataFrame:
     """Count releases by how much parent information their labels have.
 
@@ -415,34 +447,55 @@ def parent_coverage(
         "no parent", and a label that only has such children does not
         count as having children. Defaults to
         ``config.PLACEHOLDER_LABEL_IDS``.
+    self_released : DataFrame, optional
+        Column ``label_id``: the labels that mean "released by the
+        artist", for example the output of ``self_released_label_ids``.
+        Such a label goes to ``self_released``, whatever its parent or
+        children, and even if it is missing from ``label_roots``. If
+        None, no label gets that class.
 
     Returns
     -------
     DataFrame
         One row per ``year``, ordered by year, with distinct-release
-        counts ``on_root_alone``, ``in_tree``, ``unknown_label``, their
-        total ``n_releases`` and the shares ``share_on_root_alone``,
-        ``share_in_tree``, ``share_unknown_label``.
+        counts ``on_root_alone``, ``in_tree``, ``self_released``,
+        ``unknown_label``, their total ``n_releases`` and the shares
+        ``share_on_root_alone``, ``share_in_tree``,
+        ``share_self_released``, ``share_unknown_label``. The
+        ``self_released`` columns are always present and are 0 when
+        ``self_released`` is None.
 
         * ``in_tree`` - the label has a parent, or some label names it
           as parent.
         * ``on_root_alone`` - the label has no parent and no children.
+        * ``self_released`` - the label is in ``self_released``.
         * ``unknown_label`` - the label id (or none) is not in the labels
           table.
 
     Notes
     -----
     A release on several labels goes to its best class, in the order
-    ``in_tree`` > ``on_root_alone`` > ``unknown_label``, so the three
-    counts add up to ``n_releases``. ``on_root_alone`` releases are the
-    ones that could hide major-owned output that Discogs does not link
-    to the major's tree.
+    ``in_tree`` > ``on_root_alone`` > ``self_released`` >
+    ``unknown_label``, so the four counts add up to ``n_releases``. A
+    release on "Not On Label" and on a real label therefore takes the
+    real label's class. ``on_root_alone`` releases are the ones that
+    could hide major-owned output that Discogs does not link to the
+    major's tree.
+
+    Labels in ``self_released`` do not count as children of their listed
+    parent. In the 2026 data "Not On Label" (1818) names Stolen Riff
+    Records (205754) as parent, and that link alone does not put Stolen
+    Riff in a tree.
     """
     stops = list(stop_ids)
     real_parent = F.col("parent_id").isNotNull() & ~F.col("parent_id").isin(stops)
+    child_rows = label_roots.where(real_parent)
+    if self_released is not None:
+        child_rows = child_rows.join(
+            self_released.select("label_id").distinct(), "label_id", "left_anti"
+        )
     children = (
-        label_roots.where(real_parent)
-        .select(F.col("parent_id").alias("label_id"))
+        child_rows.select(F.col("parent_id").alias("label_id"))
         .distinct()
         .withColumn("_has_child", F.lit(True))
     )
@@ -452,19 +505,39 @@ def parent_coverage(
         .join(children, "label_id", "left")
         .select(
             "label_id",
-            F.when(F.col("_has_parent") | F.coalesce(F.col("_has_child"), F.lit(False)), 3)
-            .otherwise(2)
+            F.when(F.col("_has_parent") | F.coalesce(F.col("_has_child"), F.lit(False)), 4)
+            .otherwise(3)
             .alias("_rank"),
         )
     )
     # Rank 1 is the class of a label id that is not in the labels table.
+    # Rank 2 is a self-released label. It is applied before the table
+    # lookup, so it overrides the label's own parent and children.
+    flagged = release_labels.select("release_id", "year", "label_id")
+    if self_released is not None:
+        flagged = flagged.join(
+            F.broadcast(
+                self_released.select("label_id")
+                .distinct()
+                .withColumn("_is_self", F.lit(True))
+            ),
+            "label_id",
+            "left",
+        )
+    else:
+        flagged = flagged.withColumn("_is_self", F.lit(False))
     per_release = (
-        release_labels.select("release_id", "year", "label_id")
-        .join(classes, "label_id", "left")
+        flagged.join(classes, "label_id", "left")
+        .withColumn(
+            "_label_rank",
+            F.when(F.coalesce(F.col("_is_self"), F.lit(False)), 2).otherwise(
+                F.coalesce(F.col("_rank"), F.lit(1))
+            ),
+        )
         .groupBy("year", "release_id")
-        .agg(F.max(F.coalesce(F.col("_rank"), F.lit(1))).alias("_rank"))
+        .agg(F.max("_label_rank").alias("_rank"))
     )
-    names = {2: "on_root_alone", 3: "in_tree", 1: "unknown_label"}
+    names = {3: "on_root_alone", 4: "in_tree", 2: "self_released", 1: "unknown_label"}
     counts = per_release.groupBy("year").agg(
         *[
             F.sum(F.when(F.col("_rank") == rank, 1).otherwise(0)).alias(name)
@@ -472,7 +545,11 @@ def parent_coverage(
         ]
     )
     out = counts.withColumn(
-        "n_releases", F.col("on_root_alone") + F.col("in_tree") + F.col("unknown_label")
+        "n_releases",
+        F.col("on_root_alone")
+        + F.col("in_tree")
+        + F.col("self_released")
+        + F.col("unknown_label"),
     )
     for name in names.values():
         out = out.withColumn(f"share_{name}", F.col(name) / F.col("n_releases"))
@@ -480,10 +557,12 @@ def parent_coverage(
         "year",
         "on_root_alone",
         "in_tree",
+        "self_released",
         "unknown_label",
         "n_releases",
         "share_on_root_alone",
         "share_in_tree",
+        "share_self_released",
         "share_unknown_label",
     ).orderBy("year")
 
