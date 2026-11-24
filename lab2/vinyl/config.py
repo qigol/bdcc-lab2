@@ -175,8 +175,12 @@ GRAPH_MIN_WEIGHT: dict[str, int] = {
 
 #: Smallest group of artists that HDBSCAN accepts as a cluster in the
 #: artist clustering (``clustering.cluster_hdbscan``). The sweep in
-#: ``explorers/07_artist_clustering`` compares 25, 50, 100 and 200.
-HDBSCAN_MIN_CLUSTER_SIZE: int = 50
+#: ``explorers/07_artist_clustering`` compares 25, 50, 100 and 200
+#: (2026, 194,105 artists): 374 / 238 / 149 / 99 clusters with 24% / 20% /
+#: 13% / 8% noise; the largest cluster stays near 6.7% from 50 up. 100
+#: leaves far fewer artists unassigned than 50 while keeping style-level
+#: clusters; 200 starts merging them.
+HDBSCAN_MIN_CLUSTER_SIZE: int = 100
 
 #: ``n_neighbors`` of the UMAP runs (``clustering.reduce_umap``) in the
 #: artist clustering: how many neighbours define the local structure.
