@@ -7,4 +7,4 @@
    - It is also the top "changed parent" row in explorer 05.
 2. **Top "independent" artist.** It is "THIS IS WHAT I HEAR WHEN YOU TALK" (6351861, about 3.4 K releases), which looks like a bulk uploader. Check it before naming top artists in the report, and consider adding it to a placeholder or exclusion list.
 3. **Decisions checklists** in explorers 02-05 are still open. Fill them from the executed outputs in `.orchestration/runs/T05..T08/` when drafting the report (T12).
-4. **Executed explorer outputs** are in gitignored `runs/` only. Decide whether the report needs them committed.
+4. **Executed explorer outputs**: done. They are committed in `lab2/explorers/executed/`.
