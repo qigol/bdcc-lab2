@@ -6,8 +6,19 @@ and return small aggregated DataFrames that are safe to ``.toPandas()``.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as F
+
+from . import config
+
+if TYPE_CHECKING:  # only for type hints; not needed at run time
+    import pandas as pd
+
+#: Seed for the random steps in this module. ``config.SEED`` if the project
+#: defines one, else 42.
+_SEED: int = getattr(config, "SEED", 42)
 
 
 def tag_shares_by_year(release_tags: DataFrame, tag_col: str = "style") -> DataFrame:
@@ -195,3 +206,289 @@ def style_cooccurrence(
         .withColumn("jaccard", F.col("n_both") / (F.col("n_a") + F.col("n_b") - F.col("n_both")))
         .select("year", "style_a", "style_b", "n_both", "n_a", "n_b", "jaccard")
     )
+
+
+def cooccurrence_graph_stats(cooc: DataFrame) -> "pd.DataFrame":
+    """Describe the structure of each year's style co-occurrence network.
+
+    Parameters
+    ----------
+    cooc : DataFrame
+        Output of ``style_cooccurrence``: columns ``year``, ``style_a``,
+        ``style_b`` and ``jaccard``. It is collected to the driver, so
+        build it with a ``min_count`` that keeps it to a few thousand
+        edges per year.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per year that has at least one edge, sorted by year, with:
+
+        * ``n_nodes`` - styles that have at least one edge.
+        * ``n_edges`` - style pairs kept.
+        * ``density`` - ``n_edges`` divided by the possible number of
+          edges among ``n_nodes``.
+        * ``n_components`` - connected components.
+        * ``largest_component_share`` - nodes in the largest component
+          divided by ``n_nodes``.
+        * ``modularity`` - modularity of the Louvain communities, with
+          ``jaccard`` as the edge weight (seed ``_SEED``). It is 0 to 1
+          for a clear community structure and can be slightly negative.
+
+    Notes
+    -----
+    Nodes are only the styles that pass the ``min_count`` filter in
+    ``style_cooccurrence``. Because that filter is an absolute count,
+    years with fewer releases keep fewer edges, which lowers ``n_nodes``
+    and ``density``. Compare years with similar release counts.
+    """
+    import networkx as nx
+    import pandas as pd
+
+    edges = (
+        cooc.select("year", "style_a", "style_b", "jaccard")
+        .toPandas()
+        .sort_values(["year", "style_a", "style_b"])  # Spark row order is arbitrary; Louvain depends on it
+    )
+    rows = []
+    for year, group in edges.groupby("year", sort=True):
+        graph = nx.Graph()
+        graph.add_weighted_edges_from(
+            zip(group["style_a"], group["style_b"], group["jaccard"].astype(float))
+        )
+        components = list(nx.connected_components(graph))
+        communities = nx.community.louvain_communities(graph, weight="weight", seed=_SEED)
+        rows.append(
+            {
+                "year": int(year),
+                "n_nodes": graph.number_of_nodes(),
+                "n_edges": graph.number_of_edges(),
+                "density": nx.density(graph),
+                "n_components": len(components),
+                "largest_component_share": max(len(c) for c in components)
+                / graph.number_of_nodes(),
+                "modularity": nx.community.modularity(graph, communities, weight="weight"),
+            }
+        )
+    columns = [
+        "year",
+        "n_nodes",
+        "n_edges",
+        "density",
+        "n_components",
+        "largest_component_share",
+        "modularity",
+    ]
+    return pd.DataFrame(rows, columns=columns)
+
+
+def entropy_decomposition(
+    release_tags: DataFrame,
+    tag_col: str = "style",
+    base_year: int = 2016,
+) -> DataFrame:
+    """Separate new tags from evener use of old tags in the entropy trend.
+
+    Entropy can rise because new tags appear, or because tags that
+    already existed are used more evenly. This function recomputes the
+    entropy using only the tags that were used in ``base_year``.
+
+    Parameters
+    ----------
+    release_tags : DataFrame
+        ``release_styles`` or ``release_genres``.
+    tag_col : str
+        ``"style"`` or ``"genre"``.
+    base_year : int
+        Year that defines the set of "old" tags. Must be present in
+        ``release_tags``.
+
+    Returns
+    -------
+    DataFrame
+        One row per year with:
+
+        * ``entropy``, ``evenness`` - as in ``shannon_entropy_by_year``.
+        * ``entropy_base_tags`` - Shannon entropy in bits over the
+          (release, tag) pairs whose tag was used in ``base_year``,
+          renormalized so those pairs sum to 1. Null if a year uses no
+          base tag.
+        * ``n_new_tags`` - tags used that year and absent in
+          ``base_year``. It is 0 in ``base_year``.
+        * ``new_tag_pair_share`` - share of that year's (release, tag)
+          pairs that carry a new tag.
+
+    Raises
+    ------
+    ValueError
+        If ``release_tags`` has no rows for ``base_year``.
+
+    Notes
+    -----
+    If ``entropy_base_tags`` rises like ``entropy``, the change comes
+    from evener use of old tags. If it stays flat while ``entropy``
+    rises, it comes from new tags. The entropy of a fixed set of tags is
+    capped at ``log2`` of the set size, so a flat line can also mean the
+    old tags were already close to even.
+    """
+    counts = release_tags.groupBy("year", tag_col).agg(F.count("*").alias("n"))
+    base_tags = (
+        counts.where(F.col("year") == base_year)
+        .select(tag_col)
+        .distinct()
+        .withColumn("is_base", F.lit(True))
+    )
+    if base_tags.limit(1).count() == 0:
+        raise ValueError(f"No rows for base_year={base_year}")
+
+    by_year = Window.partitionBy("year")
+    is_base = F.col("is_base")
+    flagged = (
+        counts.join(F.broadcast(base_tags), tag_col, "left")
+        .withColumn("is_base", F.coalesce("is_base", F.lit(False)))
+        .withColumn("total", F.sum("n").over(by_year))
+        .withColumn("base_total", F.sum(F.when(is_base, F.col("n")).otherwise(0)).over(by_year))
+        .withColumn("p", F.col("n") / F.col("total"))
+        .withColumn("p_base", F.when(is_base, F.col("n") / F.col("base_total")))
+    )
+    return (
+        flagged.groupBy("year")
+        .agg(
+            F.count("*").alias("n_tags"),
+            (-F.sum(F.col("p") * F.log2("p"))).alias("entropy"),
+            (-F.sum(F.col("p_base") * F.log2("p_base"))).alias("entropy_base_tags"),
+            F.sum(F.when(is_base, 0).otherwise(1)).alias("n_new_tags"),
+            (
+                F.sum(F.when(is_base, 0).otherwise(F.col("n"))) / F.sum("n")
+            ).alias("new_tag_pair_share"),
+        )
+        .withColumn(
+            "evenness",
+            F.when(F.col("n_tags") > 1, F.col("entropy") / F.log2("n_tags")),
+        )
+        .select(
+            "year",
+            "entropy",
+            "evenness",
+            "entropy_base_tags",
+            "n_new_tags",
+            "new_tag_pair_share",
+        )
+        .orderBy("year")
+    )
+
+
+def entropy_sensitivity(
+    release_tags: DataFrame,
+    releases: DataFrame,
+    tag_col: str = "style",
+    n_draws: int = 5,
+    seed: int = _SEED,
+) -> DataFrame:
+    """Test whether evenness depends on how many releases a year has.
+
+    Recent years have fewer releases because they are still being
+    catalogued (and 2026 is partial). Evenness over fewer releases can
+    differ only because of the smaller sample. This function draws, for
+    every year, random samples of the same size and recomputes evenness
+    on them.
+
+    Parameters
+    ----------
+    release_tags : DataFrame
+        ``release_styles`` or ``release_genres``.
+    releases : DataFrame
+        The ``releases`` table. Only ``release_id`` and ``year`` are
+        used. All releases, tagged or not, define the sample size and
+        the population that is sampled.
+    tag_col : str
+        ``"style"`` or ``"genre"``.
+    n_draws : int
+        Number of random samples per year.
+    seed : int
+        Seed for the random ordering of releases.
+
+    Returns
+    -------
+    DataFrame
+        One row per year with:
+
+        * ``evenness_full`` - evenness on all releases, as in
+          ``shannon_entropy_by_year``.
+        * ``evenness_sub_mean``, ``evenness_sub_min``,
+          ``evenness_sub_max`` - mean, minimum and maximum evenness over
+          the ``n_draws`` samples.
+
+    Raises
+    ------
+    ValueError
+        If ``n_draws`` is below 1, or ``releases`` has no rows in the
+        full years ``config.YEAR_MIN``-``config.LAST_FULL_YEAR``.
+
+    Notes
+    -----
+    The sample size ``m`` is the number of distinct releases in the
+    smallest full year in ``config.YEAR_MIN``-``config.LAST_FULL_YEAR``,
+    counted over all of ``releases``. Each sample takes ``m`` releases
+    per year, then keeps only their (release, tag) pairs, so releases
+    without tags count towards ``m`` but add no pairs. A year with
+    fewer than ``m`` releases is used whole, so its subsampled values
+    equal ``evenness_full``. All draws share one Spark plan: distinct
+    ``(release_id, year)`` rows are cross-joined with the draw ids
+    ``0..n_draws-1``, given one ``F.rand(seed)`` value per row, and the
+    ``m`` lowest values per ``(draw, year)`` are kept. The tags are
+    joined and counted once for all draws. No ids reach the driver.
+    """
+    if n_draws < 1:
+        raise ValueError("n_draws must be at least 1")
+
+    ids = releases.where(F.col("year").isNotNull()).select("release_id", "year").distinct()
+    smallest = (
+        ids.where(F.col("year").between(config.YEAR_MIN, config.LAST_FULL_YEAR))
+        .groupBy("year")
+        .count()
+        .agg(F.min("count"))
+        .first()[0]
+    )
+    if smallest is None:
+        raise ValueError("No releases in the full years of the study window")
+
+    draw_ids = releases.sparkSession.range(n_draws).select(F.col("id").cast("int").alias("draw"))
+    ranked = (
+        ids.crossJoin(F.broadcast(draw_ids))
+        .withColumn("_r", F.rand(seed))
+        .withColumn(
+            "_rank",
+            F.row_number().over(Window.partitionBy("draw", "year").orderBy("_r", "release_id")),
+        )
+        .where(F.col("_rank") <= smallest)
+        .select("draw", "release_id", "year")
+    )
+    counts = (
+        ranked.join(release_tags.select("release_id", "year", tag_col), ["release_id", "year"])
+        .groupBy("draw", "year", tag_col)
+        .agg(F.count("*").alias("n"))
+    )
+    p = F.col("n") / F.sum("n").over(Window.partitionBy("draw", "year"))
+    per_draw = (
+        counts.withColumn("p", p)
+        .groupBy("draw", "year")
+        .agg(
+            F.count("*").alias("n_tags"),
+            (-F.sum(F.col("p") * F.log2("p"))).alias("entropy"),
+        )
+        .withColumn("max_entropy", F.log2("n_tags"))
+        .withColumn(
+            "evenness",
+            F.when(F.col("max_entropy") > 0, F.col("entropy") / F.col("max_entropy")),
+        )
+    )
+    sub = per_draw.groupBy("year").agg(
+        F.avg("evenness").alias("evenness_sub_mean"),
+        F.min("evenness").alias("evenness_sub_min"),
+        F.max("evenness").alias("evenness_sub_max"),
+    )
+    full = shannon_entropy_by_year(release_tags, tag_col).select(
+        "year", F.col("evenness").alias("evenness_full")
+    )
+    return full.join(sub, "year", "left").orderBy("year")
