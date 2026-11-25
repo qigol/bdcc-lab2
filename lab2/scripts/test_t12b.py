@@ -124,10 +124,15 @@ def test_main() -> None:
     old = load_head(rel)
     ok, detail = same_layout(new, old)
     check("same cells in the same order as HEAD", ok, detail)
-    ok, detail = same_code_cells(new, old)
-    check("code cells byte-identical to HEAD (outputs still cleared)", ok, detail)
-    check("every code cell has no outputs",
-          all(not c.get("outputs") for c in new["cells"] if c["cell_type"] == "code"))
+    # Final step: the full-data run's outputs were copied into main.ipynb, so compare code
+    # sources only, and require that no output is an error.
+    src_new = ["".join(c["source"]) for c in new["cells"] if c["cell_type"] == "code"]
+    src_old = ["".join(c["source"]) for c in old["cells"] if c["cell_type"] == "code"]
+    check("code cell sources identical to the baseline", src_new == src_old,
+          f"{len(src_new)} vs {len(src_old)} code cells")
+    check("no code cell output is an error",
+          not any(o.get("output_type") == "error"
+                  for c in new["cells"] if c["cell_type"] == "code" for o in c.get("outputs", [])))
 
     left, style = [], []
     for i, cell in enumerate(new["cells"]):

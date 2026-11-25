@@ -148,7 +148,11 @@ def test_notebook() -> None:
     check("valid JSON with cells", isinstance(nb.get("cells"), list) and len(nb["cells"]) > 0)
     ids = [c["id"] for c in nb["cells"]]
     check("cell ids are unique", len(ids) == len(set(ids)))
-    check("code cells have no outputs", all(c["outputs"] == [] for c in nb["cells"] if c["cell_type"] == "code"))
+    # The full-data run's outputs were copied in at the end of the project: outputs are
+    # expected now, but none may be an error.
+    check("no code cell output is an error",
+          not any(o.get("output_type") == "error"
+                  for c in nb["cells"] if c["cell_type"] == "code" for o in c.get("outputs", [])))
 
     cells = code_cells(nb)
     trees: dict[int, ast.AST] = {}
