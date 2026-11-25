@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import re
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -45,6 +46,10 @@ DECISIONS_PREFIX = "## Decisions to carry"
 DASHBOARD_PREFIX = "## 9. Dashboard"
 
 
+
+# Baseline: main before T12b (override with T12B_BASE=<rev>). Was HEAD while the task was uncommitted.
+BASE = os.environ.get("T12B_BASE", "73d9345")
+
 def check(name: str, ok: bool, detail: str = "") -> None:
     """Record and print one check result."""
     print(f"  [{'PASS' if ok else 'FAIL'}] {name}" + (f" - {detail}" if detail and not ok else ""))
@@ -59,7 +64,7 @@ def text(cell: dict) -> str:
 
 def load_head(rel: str) -> dict:
     """Load a notebook as it is in git HEAD (``rel`` relative to the repo root)."""
-    out = subprocess.run(["git", "-C", str(REPO), "show", f"HEAD:{rel}"], capture_output=True, check=True)
+    out = subprocess.run(["git", "-C", str(REPO), "show", f"{BASE}:{rel}"], capture_output=True, check=True)
     return json.loads(out.stdout.decode("utf-8"))
 
 
@@ -173,6 +178,8 @@ def test_explorers() -> None:
             changed = [
                 i for i, (a, b) in enumerate(zip(new["cells"], old["cells"]))
                 if a["cell_type"] == "markdown" and text(a) != text(b) and not text(b).startswith(DECISIONS_PREFIX)
+                # Orchestrator fix in T12b: explorer 04's "Not On Label" share (4-6% -> 12.8-17.9%).
+                and not (rel.endswith(("04_labels_and_majors.ipynb", "04_labels_and_majors.executed.ipynb")) and i == 21)
             ]
             check(f"{rel}: only the Decisions markdown changed", not changed, f"cells {changed}")
             cells = [text(c) for c in new["cells"] if c["cell_type"] == "markdown" and text(c).startswith(DECISIONS_PREFIX)]
