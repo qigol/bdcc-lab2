@@ -49,6 +49,10 @@ DASHBOARD_PREFIX = "## 9. Dashboard"
 
 # Baseline: main before T12b (override with T12B_BASE=<rev>). Was HEAD while the task was uncommitted.
 BASE = os.environ.get("T12B_BASE", "73d9345")
+#: Paths renamed after BASE: current path -> path at BASE.
+RENAMED_SINCE_BASE = {
+    "lab2/explorers/executed/07_artist_clustering.executed.ipynb": "lab2/explorers/executed/07_artist_clustering.ipynb",
+}
 
 def check(name: str, ok: bool, detail: str = "") -> None:
     """Record and print one check result."""
@@ -64,6 +68,8 @@ def text(cell: dict) -> str:
 
 def load_head(rel: str) -> dict:
     """Load a notebook as it is in git HEAD (``rel`` relative to the repo root)."""
+    # T14 renamed the executed explorer 07 to *.executed.ipynb; the baseline commit has the old name.
+    rel = RENAMED_SINCE_BASE.get(rel, rel)
     out = subprocess.run(["git", "-C", str(REPO), "show", f"{BASE}:{rel}"], capture_output=True, check=True)
     return json.loads(out.stdout.decode("utf-8"))
 
@@ -146,7 +152,9 @@ def test_main() -> None:
           f"{len(findings)} findings, HEAD has {n_todo} TODO findings")
     dash = [m for m in md_cells if m.startswith(DASHBOARD_PREFIX)]
     dash_old = [text(c) for c in old["cells"] if c["cell_type"] == "markdown" and text(c).startswith(DASHBOARD_PREFIX)]
-    check("section 9 cell unchanged", dash == dash_old)
+    # T13 wrote section 9: it now links the dashboard file and has no TODO.
+    check("section 9 cell is written by T13 (links the dashboard, no TODO)",
+          len(dash) == 1 and "dashboard/vinyl_decade.html" in dash[0] and "TODO" not in dash[0] and dash != dash_old)
     check("cell 0 has the run date", "25 November 2026" in md_cells[0])
 
 
