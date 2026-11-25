@@ -135,7 +135,8 @@ def code_cells(nb: dict) -> list[tuple[int, str]]:
 def test_config() -> None:
     """The two new constants."""
     print("config")
-    check("HDBSCAN_MIN_CLUSTER_SIZE is 50", config.HDBSCAN_MIN_CLUSTER_SIZE == 50 and isinstance(config.HDBSCAN_MIN_CLUSTER_SIZE, int))
+    # T11 raised it from 50 to 100 after the min_cluster_size sweep in explorer 07.
+    check("HDBSCAN_MIN_CLUSTER_SIZE is 100", config.HDBSCAN_MIN_CLUSTER_SIZE == 100 and isinstance(config.HDBSCAN_MIN_CLUSTER_SIZE, int))
     check("UMAP_N_NEIGHBORS is 30", config.UMAP_N_NEIGHBORS == 30 and isinstance(config.UMAP_N_NEIGHBORS, int))
 
 
@@ -196,14 +197,17 @@ def test_notebook() -> None:
     )
     check("export_manifest is called once", manifest_calls == 1, str(manifest_calls))
 
-    # Findings stay for T12b.
-    findings = [c for c in nb["cells"] if c["cell_type"] == "markdown" and "**Finding (TODO)" in "".join(c["source"])]
-    check("Finding (TODO) cells are still present", len(findings) == 11, str(len(findings)))
+    # T12b filled the findings: no "Finding (TODO)" is left and the 11 findings read "> **Finding.**".
+    todo_findings = [c for c in nb["cells"] if c["cell_type"] == "markdown" and "**Finding (TODO)" in "".join(c["source"])]
+    check("no Finding (TODO) cell is left", len(todo_findings) == 0, str(len(todo_findings)))
+    findings = [c for c in nb["cells"] if c["cell_type"] == "markdown" and "**Finding.**" in "".join(c["source"])]
+    check("11 filled Finding cells", len(findings) == 11, str(len(findings)))
 
     # Markdown edits.
     cell0 = "".join(nb["cells"][0]["source"])
-    check("cell 0 has the new status line", "Status: code final; results run on full data on `<RUN DATE>`" in cell0
-          and "skeleton" not in cell0, cell0[-200:])
+    # T12b replaced the <RUN DATE> placeholder with the date of the full run.
+    check("cell 0 has the final status line", "Status: code final; results run on full data on 25 November 2026" in cell0
+          and "<RUN DATE>" not in cell0 and "skeleton" not in cell0, cell0[-200:])
     section_43 = next("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "markdown" and "### 4.3 Methods in brief" in "".join(c["source"]))
     check("4.3 has no TODO", "TODO" not in section_43)
     for needle in ("is_reissue_any", "GRAPH_MIN_WEIGHT", "Resolution 1.0, seed 42", "64 dimensions, 10 walks × 30 steps per node, p = q = 1",
@@ -212,9 +216,12 @@ def test_notebook() -> None:
     appendix = next("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "markdown" and "## Appendix A" in "".join(c["source"]))
     check("Appendix A lists export.py, executed/ and dashboard/",
           all(s in appendix for s in ("export.py", "executed/", "dashboard/")))
-    check("sections 1 and 6-10 are untouched (still TODO)",
-          "TODO" in "".join(nb["cells"][next(i for i, c in enumerate(nb["cells"]) if "## 1. Executive summary" in "".join(c["source"]))]["source"])
-          and any("## 8. Conclusion" in "".join(c["source"]) for c in nb["cells"]))
+    # T12b wrote sections 1 and 6-8 and T13 wrote section 9: no markdown cell has a TODO left.
+    summary = next("".join(c["source"]) for c in nb["cells"] if "## 1. Executive summary" in "".join(c["source"]))
+    todo_cells = [i for i, c in enumerate(nb["cells"]) if c["cell_type"] == "markdown" and "TODO" in "".join(c["source"])]
+    check("sections 1 and 6-10 are written (no TODO left)",
+          "TODO" not in summary and not todo_cells
+          and any("## 8. Conclusion" in "".join(c["source"]) for c in nb["cells"]), str(todo_cells))
 
     # The self-released ids stay a DataFrame.
     all_code = "\n".join(s for _, s in cells)

@@ -4,3 +4,4 @@ __pycache__/
 lab2/data/
 .orchestration/runs/
 .venv/
+lab2/figures/

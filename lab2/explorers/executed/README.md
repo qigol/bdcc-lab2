@@ -1,6 +1,6 @@
 # Executed explorers (full data)
 
-These are copies of the explorer notebooks with outputs, from runs on the full Parquet tables: 2026 snapshot, plus 2020 where used. The notebooks one level up are the source and have no outputs. Rerun them with `jupyter nbconvert --execute` on the `vinyl` kernel to refresh these copies.
+These are copies of the explorer notebooks with outputs, from runs on the full Parquet tables: 2026 snapshot, plus 2020 where used. Each file is named `<explorer>.executed.ipynb`. The notebooks one level up are the source and have no outputs. Rerun them with `jupyter nbconvert --execute` on the `vinyl` kernel to refresh these copies.
 
 | Notebook | Run | Notes |
 |---|---|---|
