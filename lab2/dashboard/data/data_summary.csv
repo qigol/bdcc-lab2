@@ -1,0 +1,6 @@
+metric,count,share,note
+releases_in_scope,3829109,,releases dated 2016-2026 in the October 2026 snapshot
+linked_artists,910586,,distinct main-artist ids on those releases
+linked_labels,397961,,distinct label ids on those releases
+releases_with_style,3413517,0.891465,releases with at least one style; share of releases in scope
+year_filter,,,year filter applied at ingest

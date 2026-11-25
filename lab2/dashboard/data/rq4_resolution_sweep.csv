@@ -1,0 +1,4 @@
+resolution,n_communities,n_communities_ge50,largest_share,modularity,nmi_vs_reference,graph
+0.5,23864,57,0.06808,0.920419,0.966256,collaboration
+1.0,23939,84,0.042858,0.928191,1.0,collaboration
+2.0,24036,118,0.0280909,0.921134,0.963483,collaboration

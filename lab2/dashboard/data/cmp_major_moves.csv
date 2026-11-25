@@ -1,0 +1,21 @@
+label_id,label_name,major_old,major_new,root_id_old,root_id_new,parent_id_old,parent_id_new,move,n_releases
+750,Virgin,Independent,Universal,326037,38404,326037.0,26760,into_major,2189
+133449,[PIAS],Independent,Universal,142816,38404,142816.0,142816,into_major,1912
+720,disco:wax,Independent,Sony,720,353657,,268343,into_major,1461
+674471,Caroline International,Universal,Independent,38404,52512,1334510.0,952,out_of_major,786
+969792,HEXAGON (3),Warner,Independent,2345,1631279,2178.0,1631279,out_of_major,714
+19369,Harmonia Mundi,Independent,Universal,142816,38404,283993.0,283993,into_major,711
+26215,Play It Again Sam,Independent,Universal,142816,38404,142816.0,142816,into_major,680
+555808,Quality Control Music (2),Universal,Independent,38404,2290402,1408460.0,1408465,out_of_major,595
+29600,Erato,Warner,Independent,2345,29600,29158.0,212,out_of_major,587
+13768,Som Livre,Independent,Sony,13768,353657,420097.0,420097,into_major,581
+1378400,Alamo Records (5),Universal,Sony,38404,353657,38404.0,29073,between_majors,552
+1423931,TenThousand Projects,Independent,Warner,1423931,2345,,1734899,into_major,531
+26063,Virgin Music,Independent,Universal,26063,38404,,750,into_major,520
+1039979,Musical Freedom Records,Warner,Independent,2345,385701,385701.0,385701,out_of_major,519
+983890,Pink Floyd Records,Independent,Sony,983890,353657,,272650,into_major,495
+566730,Cobalt Music (2),Independent,Sony,566730,353657,,29073,into_major,485
+54415,Awal,Independent,Sony,115577,353657,509687.0,1480076,into_major,470
+122037,Ki/oon,Independent,Sony,381823,353657,381823.0,6110,into_major,457
+78518,Hyperion,Independent,Universal,266058,38404,266058.0,266058,into_major,427
+254215,Warner Music Nashville,Independent,Warner,254215,2345,,2345,into_major,382

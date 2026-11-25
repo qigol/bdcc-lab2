@@ -1,0 +1,4 @@
+flag,releases_start,releases_end,reissues_start,reissues_end,growth_explained,start_year,end_year
+is_reissue,73730,92779,14973,20187,0.273715,2016,2025
+is_reissue_any,73730,92779,21353,29936,0.450575,2016,2025
+is_reissue_master,73730,92779,19803,27940,0.427162,2016,2025

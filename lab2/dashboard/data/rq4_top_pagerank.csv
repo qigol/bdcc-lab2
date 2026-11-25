@@ -1,0 +1,46 @@
+graph,rank,node,name,degree,strength,pagerank
+collaboration,1,95537,Johann Sebastian Bach,823,3982.0,0.00121957
+collaboration,2,95544,Ludwig van Beethoven,831,4663.0,0.00117044
+collaboration,3,95546,Wolfgang Amadeus Mozart,850,3720.0,0.000990006
+collaboration,4,304975,Johannes Brahms,544,2624.0,0.00066863
+collaboration,5,283469,Franz Schubert,381,1641.0,0.000447645
+collaboration,6,578727,Robert Schumann,337,1645.0,0.000425667
+collaboration,7,999914,Pyotr Ilyich Tchaikovsky,300,1639.0,0.000375158
+collaboration,8,260744,Berliner Philharmoniker,199,1855.0,0.000366119
+collaboration,9,96123,Claude Debussy,282,1462.0,0.000365931
+collaboration,10,216140,Maurice Ravel,282,1467.0,0.000357429
+collaboration,11,212726,London Symphony Orchestra,252,1491.0,0.000355433
+collaboration,12,252868,Agathocles,123,392.0,0.000334502
+collaboration,13,9070,Armin van Buuren,155,645.0,0.000333507
+collaboration,14,754974,Wiener Philharmoniker,206,1611.0,0.000321941
+collaboration,15,192325,Frédéric Chopin,216,1149.0,0.000315753
+credit,1,499136,Beau Thomas,528,2941.0,0.000712375
+credit,2,740272,Brad Boatright,592,3827.0,0.000701139
+credit,3,495765,Will Killingsworth,520,2588.0,0.000694379
+credit,4,393350,Matt Colton,504,4145.0,0.000561131
+credit,5,436674,Carl Saff,482,2803.0,0.000540972
+credit,6,12544,James Plotkin,427,2765.0,0.000514815
+credit,7,1124645,Taylor Swift,235,6138.0,0.000507172
+credit,8,244135,Greg Calbi,493,3933.0,0.000472519
+credit,9,607445,Mikey Young,338,2096.0,0.000444834
+credit,10,259758,Ted Jensen,395,3873.0,0.000434479
+credit,11,20991,The Rolling Stones,217,4727.0,0.00043432
+credit,12,271098,Bob Ludwig,362,4251.0,0.000427393
+credit,13,19298,Céline Dion,268,4081.0,0.000420598
+credit,14,275139,Alan Douches,380,2797.0,0.000417691
+credit,15,574719,Patrick W. Engel,268,2514.0,0.000399945
+artist-label,1,l25487,Sony Music,2403,23875.0,0.00203103
+artist-label,2,l1866,Columbia,939,12231.0,0.000914854
+artist-label,3,l7703,Deutsche Grammophon,528,8556.0,0.000757881
+artist-label,4,l38404,Universal Music Group,991,8708.0,0.000726887
+artist-label,5,l23694,Universal Music,1100,7500.0,0.000713489
+artist-label,6,l681,Atlantic,583,9264.0,0.000603868
+artist-label,7,l1003,BMG,643,7839.0,0.000600897
+artist-label,8,l8030,Naxos,599,3431.0,0.000595206
+artist-label,9,l5320,Decca,546,6095.0,0.00056139
+artist-label,10,l895,RCA,508,7306.0,0.00050634
+artist-label,11,l769094,Armada (4),541,4385.0,0.000483489
+artist-label,12,l1610,Polydor,451,6431.0,0.000466712
+artist-label,13,l115401,High Roller Records,308,4033.0,0.0004352
+artist-label,14,l971628,Artist Intelligence Agency,340,1522.0,0.000432602
+artist-label,15,l156020,Svart Records,389,2701.0,0.000421554
